@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(nvm ls:*)",
+      "Read(//Users/eapple/.nvm/versions/**)",
+      "Read(//opt/homebrew/**)",
+      "Bash(brew list:*)",
+      "Read(//usr/local/bin/**)",
+      "Read(//usr/local/opt/**)",
+      "Read(//Users/eapple/.volta/**)",
+      "Bash(kill %1)",
+      "Read(//usr/local/Cellar/**)",
+      "Read(//private/tmp/**)"
+    ]
+  }
+}
