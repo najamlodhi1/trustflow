@@ -109,16 +109,26 @@ export default function BillingPage() {
           </div>
         </Card>
 
+        {/* Trust callout */}
+        <div className="rounded-[var(--radius-md)] bg-brand-success/10 border border-brand-success/20 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-1 text-center">
+          {["14-day free trial", "No credit card required", "Cancel anytime"].map((item) => (
+            <span key={item} className="flex items-center gap-1.5 text-sm text-brand-success">
+              <Check className="h-3.5 w-3.5 flex-shrink-0" />
+              {item}
+            </span>
+          ))}
+        </div>
+
         {/* Billing toggle */}
         <div className="flex flex-col items-center gap-3">
           <h2 className="text-lg font-bold text-text-primary">Choose your plan</h2>
-          <div className="flex items-center gap-3 bg-bg-surface border border-[var(--border-subtle)] rounded-full p-1">
+          <div className="flex items-center gap-1 bg-bg-surface border border-[var(--border-subtle)] rounded-full p-1">
             {(["monthly", "yearly"] as const).map((b) => (
               <button
                 key={b}
                 onClick={() => setBilling(b)}
                 className={cn(
-                  "px-4 py-1.5 rounded-full text-sm font-medium transition-all",
+                  "px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2",
                   billing === b
                     ? "bg-brand-primary text-white shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
@@ -126,7 +136,14 @@ export default function BillingPage() {
               >
                 {b.charAt(0).toUpperCase() + b.slice(1)}
                 {b === "yearly" && (
-                  <span className="ml-1.5 text-[10px] text-brand-success font-bold">-25%</span>
+                  <span className={cn(
+                    "text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors",
+                    billing === "yearly"
+                      ? "bg-white/20 text-white"
+                      : "bg-brand-success/20 text-brand-success"
+                  )}>
+                    Save 25%
+                  </span>
                 )}
               </button>
             ))}
@@ -220,7 +237,7 @@ export default function BillingPage() {
         </motion.div>
 
         <p className="text-center text-xs text-text-tertiary">
-          All plans include a 14-day free trial. No credit card required. Cancel anytime.
+          Prices in GBP. VAT may apply for UK businesses. Cancel anytime — no lock-in.
         </p>
       </div>
     </div>

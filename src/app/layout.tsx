@@ -21,11 +21,24 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
   title: {
-    default: "TrustFlow — Social Proof Platform",
+    default: "TrustFlow — Collect Testimonials, Import Reviews, Display Everywhere",
     template: "%s | TrustFlow",
   },
   description:
-    "Collect testimonials, import reviews from Google, Trustpilot & more, then display them anywhere with beautiful widgets.",
+    "The affordable social proof platform. Collect testimonials, import Google & Trustpilot reviews, and display beautiful widgets on your website. Free plan available. From £12/month.",
+  openGraph: {
+    title: "TrustFlow — Social Proof Platform",
+    description:
+      "Collect testimonials. Import reviews. Display everywhere. From £12/month.",
+    type: "website",
+    url: "https://trustflow-liard.vercel.app",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TrustFlow — Social Proof Platform",
+    description:
+      "Collect testimonials. Import reviews. Display everywhere. From £12/month.",
+  },
 };
 
 export default function RootLayout({

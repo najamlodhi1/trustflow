@@ -63,15 +63,31 @@ export default function RequestsPage({
       />
 
       <div className="p-6 max-w-screen-xl mx-auto space-y-6">
-        {/* Usage banner */}
-        <div className="flex items-center justify-between px-4 py-3 rounded-[var(--radius-md)] bg-amber-500/10 border border-amber-500/20">
-          <p className="text-sm text-amber-400">
-            <span className="font-medium">0/50 emails</span>{" "}
-            <span className="text-amber-400/70">used this month · Resets in 14 days</span>
-          </p>
-          <Button variant="warning" size="sm" className="h-7 text-xs bg-amber-500 hover:bg-amber-400 text-white">
-            Upgrade →
-          </Button>
+        {/* Usage bar */}
+        <div className="rounded-[var(--radius-md)] bg-amber-500/10 border border-amber-500/20 px-5 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-amber-400">Email quota</span>
+              <span className="text-xs text-amber-400/70">· Resets in 14 days</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-amber-400">0 / 50</span>
+              <Button variant="warning" size="sm" className="h-7 text-xs">
+                Upgrade →
+              </Button>
+            </div>
+          </div>
+          <div className="h-2 rounded-full bg-amber-500/20 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-amber-500 transition-all duration-500"
+              style={{ width: "0%" }}
+              role="progressbar"
+              aria-valuenow={0}
+              aria-valuemin={0}
+              aria-valuemax={50}
+              aria-label="0 of 50 emails used this month"
+            />
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-[380px_1fr] gap-6">

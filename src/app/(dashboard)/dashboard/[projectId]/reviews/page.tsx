@@ -23,33 +23,41 @@ const REVIEWS = [
   {
     id: "r1", name: "David Park", company: "Nomad Studio", rating: 5,
     text: "Absolutely brilliant service. Everything was delivered on time and the quality was superb.",
-    source: "google", createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    source: "google", replied: true,
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "r2", name: "Priya Mehta", company: "Clearwave SaaS", rating: 4,
     text: "Great experience overall. A few small hiccups but the team resolved them quickly.",
-    source: "trustpilot", createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+    source: "trustpilot", replied: false,
+    createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "r3", name: "Tom Bradley", company: "Local Cafe", rating: 5,
     text: "Best in the business. We've seen a huge uptick in customers mentioning they found us through reviews.",
-    source: "yelp", createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    source: "yelp", replied: false,
+    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 
-function PlatformIcon({ source }: { source: string }) {
-  const colors: Record<string, string> = {
-    google: "text-[#4285F4]",
-    trustpilot: "text-[#00B67A]",
-    yelp: "text-[#D32323]",
-    facebook: "text-[#1877F2]",
-  };
-  const labels: Record<string, string> = {
-    google: "G", trustpilot: "T", yelp: "Y", facebook: "f",
-  };
+const PLATFORM_META: Record<string, { label: string; bg: string; text: string }> = {
+  google:     { label: "G",  bg: "bg-[#4285F4]",  text: "text-white" },
+  trustpilot: { label: "T",  bg: "bg-[#00B67A]",  text: "text-white" },
+  yelp:       { label: "Y",  bg: "bg-[#D32323]",  text: "text-white" },
+  facebook:   { label: "f",  bg: "bg-[#1877F2]",  text: "text-white" },
+};
+
+function PlatformBadge({ source }: { source: string }) {
+  const meta = PLATFORM_META[source] ?? { label: source[0].toUpperCase(), bg: "bg-bg-overlay", text: "text-text-secondary" };
   return (
-    <span className={cn("font-bold text-sm", colors[source] || "text-text-secondary")}>
-      {labels[source] || source[0].toUpperCase()}
+    <span
+      title={source.charAt(0).toUpperCase() + source.slice(1)}
+      className={cn(
+        "inline-flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold flex-shrink-0",
+        meta.bg, meta.text
+      )}
+    >
+      {meta.label}
     </span>
   );
 }
@@ -335,12 +343,13 @@ export default function ReviewsPage({
                 <div className="flex items-start gap-3">
                   <Avatar name={r.name} size="md" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-text-primary">{r.name}</span>
-                      <div className="h-4 w-4 rounded-full bg-bg-overlay flex items-center justify-center">
-                        <PlatformIcon source={r.source} />
-                      </div>
+                      <PlatformBadge source={r.source} />
                       <span className="text-xs text-text-tertiary capitalize">{r.source}</span>
+                      <Badge variant={r.replied ? "success" : "default"} className="text-[10px]">
+                        {r.replied ? "Replied" : "Not replied"}
+                      </Badge>
                     </div>
                     <StarRating value={r.rating} size="sm" readonly className="mt-1" />
                     <p className="mt-2 text-sm text-text-secondary leading-relaxed">
