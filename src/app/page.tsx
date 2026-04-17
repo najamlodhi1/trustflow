@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import {
   Zap, ArrowRight, Check, ChevronDown, Play,
-  MessageSquare, Sparkles, BarChart2,
+  MessageSquare, Sparkles, BarChart2, Menu, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -39,8 +39,15 @@ const FAQ = [
   { q: "Do you offer refunds?", a: "Yes, we offer a full refund within 14 days if you're not happy. No questions asked." },
 ];
 
+const NAV_LINKS = [
+  { href: "#features", label: "Features" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#story", label: "Story" },
+];
+
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -48,37 +55,85 @@ function Navbar() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  // Close menu on scroll
+  useEffect(() => {
+    if (scrolled) setMobileOpen(false);
+  }, [scrolled]);
+
   return (
-    <nav
-      className={cn(
-        "fixed top-0 inset-x-0 z-50 flex items-center h-16 px-6 transition-all duration-300",
-        scrolled ? "glass border-b border-[var(--border-subtle)]" : "bg-transparent"
-      )}
-    >
-      <div className="max-w-7xl mx-auto w-full flex items-center">
-        <Link href="/" className="flex items-center gap-2 mr-10">
-          <div className="h-8 w-8 rounded-[var(--radius-md)] bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-          <span className="font-semibold text-text-primary">TrustFlow</span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-6 text-sm text-text-secondary flex-1">
-          <a href="#features" className="hover:text-text-primary transition-colors">Features</a>
-          <a href="#pricing" className="hover:text-text-primary transition-colors">Pricing</a>
-          <a href="#story" className="hover:text-text-primary transition-colors">Story</a>
-        </div>
-
-        <div className="flex items-center gap-2 ml-auto">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">Sign in</Button>
+    <>
+      <nav
+        className={cn(
+          "fixed top-0 inset-x-0 z-50 flex items-center h-16 px-6 transition-all duration-300",
+          scrolled ? "glass border-b border-[var(--border-subtle)]" : "bg-transparent"
+        )}
+      >
+        <div className="max-w-7xl mx-auto w-full flex items-center">
+          <Link href="/" className="flex items-center gap-2 mr-10">
+            <div className="h-8 w-8 rounded-[var(--radius-md)] bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+              <Zap className="h-4 w-4 text-white" />
+            </div>
+            <span className="font-semibold text-text-primary">TrustFlow</span>
           </Link>
-          <Link href="/login">
-            <Button variant="gradient" size="sm">Start free</Button>
+
+          <div className="hidden md:flex items-center gap-6 text-sm text-text-secondary flex-1">
+            {NAV_LINKS.map((l) => (
+              <a key={l.href} href={l.href} className="hover:text-text-primary transition-colors">
+                {l.label}
+              </a>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <Link href="/login" className="hidden md:block">
+              <Button variant="ghost" size="sm">Sign in</Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="gradient" size="sm">Start free</Button>
+            </Link>
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden p-2 rounded-[var(--radius-md)] text-text-secondary hover:text-text-primary hover:bg-bg-overlay transition-all"
+              onClick={() => setMobileOpen((o) => !o)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile menu panel */}
+      <div
+        className={cn(
+          "fixed inset-x-0 top-16 z-40 glass border-b border-[var(--border-subtle)] px-6 py-4 flex flex-col gap-3",
+          "transition-all duration-250 ease-out origin-top md:hidden",
+          mobileOpen
+            ? "opacity-100 translate-y-0 pointer-events-auto"
+            : "opacity-0 -translate-y-2 pointer-events-none"
+        )}
+      >
+        {NAV_LINKS.map((l) => (
+          <a
+            key={l.href}
+            href={l.href}
+            onClick={() => setMobileOpen(false)}
+            className="text-sm font-medium text-text-secondary hover:text-text-primary py-2 border-b border-[var(--border-subtle)] last:border-0 transition-colors"
+          >
+            {l.label}
+          </a>
+        ))}
+        <div className="flex gap-2 pt-1">
+          <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
+            <Button variant="secondary" size="sm" className="w-full">Sign in</Button>
+          </Link>
+          <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
+            <Button variant="gradient" size="sm" className="w-full">Start free</Button>
           </Link>
         </div>
       </div>
-    </nav>
+    </>
   );
 }
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import { motion } from "framer-motion";
 import {
   Monitor, Tablet, Smartphone, Copy, Check, ExternalLink,
-  Sun, Moon, ChevronDown,
+  Sun, Moon, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -60,93 +60,196 @@ interface Config {
 }
 
 function WidgetPreview({ config, device }: { config: Config; device: DeviceType }) {
+  const [carouselIdx, setCarouselIdx] = useState(0);
+
   const approvedTestimonials = SEED_TESTIMONIALS.filter(
     (t) => t.status === "approved" && t.rating >= config.minRating
-  ).slice(0, Math.min(config.maxItems, 4));
+  ).slice(0, Math.min(config.maxItems, 8));
+
+  useEffect(() => {
+    setCarouselIdx(0);
+  }, [config.type]);
+
+  useEffect(() => {
+    if (config.type !== "carousel" || approvedTestimonials.length <= 1) return;
+    const id = setInterval(
+      () => setCarouselIdx((i) => (i + 1) % approvedTestimonials.length),
+      3000
+    );
+    return () => clearInterval(id);
+  }, [config.type, approvedTestimonials.length]);
 
   const deviceWidths = { desktop: "100%", tablet: "768px", mobile: "375px" };
   const isDark = config.theme === "dark";
+  const textPrimary = isDark ? "text-white" : "text-gray-900";
+  const textSecondary = isDark ? "text-zinc-300" : "text-gray-700";
+  const textMuted = isDark ? "text-zinc-500" : "text-gray-500";
+  const cardBg = isDark ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200 shadow-sm";
+
+  const t0 = approvedTestimonials[carouselIdx] ?? approvedTestimonials[0];
+
+  function AuthorRow({ t }: { t: typeof approvedTestimonials[0] }) {
+    return (
+      <div className="flex items-center gap-2 mt-3">
+        {config.showAvatar && <Avatar name={t.name} size="sm" />}
+        <div>
+          {config.showName && <p className={cn("text-xs font-medium", textPrimary)}>{t.name}</p>}
+          {config.showCompany && <p className={cn("text-[10px]", textMuted)}>{t.company}</p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <motion.div
-      key={config.type + config.theme + device}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.25 }}
-      className="mx-auto overflow-hidden rounded-[var(--radius-lg)]"
+    <div
+      className="mx-auto overflow-hidden rounded-[var(--radius-lg)] transition-all duration-300"
       style={{ maxWidth: deviceWidths[device] }}
     >
-      <div
-        className={cn(
-          "p-6 rounded-[var(--radius-lg)]",
-          isDark ? "bg-[#111113]" : "bg-white"
-        )}
-      >
-        {config.type === "wall" || config.type === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={cn("p-6 rounded-[var(--radius-lg)]", isDark ? "bg-[#111113]" : "bg-gray-50")}>
+
+        {/* Wall — 2-column masonry */}
+        {config.type === "wall" && (
+          <div className="columns-1 sm:columns-2 gap-4 space-y-4">
             {approvedTestimonials.map((t) => (
-              <div
-                key={t.id}
-                className={cn(
-                  "p-4 rounded-[var(--radius-md)] border",
-                  isDark
-                    ? "bg-[#18181b] border-white/10 text-white"
-                    : "bg-gray-50 border-gray-200 text-gray-900"
-                )}
-              >
-                {config.showStars && <StarRating value={t.rating} size="sm" readonly className="mb-3" />}
-                <p className={cn("text-sm leading-relaxed", isDark ? "text-zinc-300" : "text-gray-700")}>
-                  &ldquo;{t.text.slice(0, 120)}...&rdquo;
-                </p>
-                {(config.showAvatar || config.showName) && (
-                  <div className="flex items-center gap-2 mt-3">
-                    {config.showAvatar && <Avatar name={t.name} size="sm" />}
-                    {config.showName && (
-                      <div>
-                        <p className={cn("text-xs font-medium", isDark ? "text-white" : "text-gray-900")}>{t.name}</p>
-                        {config.showCompany && <p className={cn("text-[10px]", isDark ? "text-zinc-500" : "text-gray-500")}>{t.company}</p>}
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div key={t.id} className={cn("break-inside-avoid p-4 rounded-[var(--radius-md)] border", cardBg)}>
+                {config.showStars && <StarRating value={t.rating} size="sm" readonly className="mb-2" />}
+                <p className={cn("text-sm leading-relaxed", textSecondary)}>&ldquo;{t.text.slice(0, 110)}&rdquo;</p>
+                <AuthorRow t={t} />
               </div>
             ))}
           </div>
-        ) : config.type === "badge" ? (
-          <div className={cn(
-            "inline-flex items-center gap-3 px-4 py-2.5 rounded-full border",
-            isDark ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200 shadow-sm"
-          )}>
-            <StarRating value={4.8} size="sm" readonly />
-            <span className={cn("text-sm font-bold", isDark ? "text-white" : "text-gray-900")}>4.8</span>
-            <span className={cn("text-xs", isDark ? "text-zinc-400" : "text-gray-500")}>500+ reviews</span>
+        )}
+
+        {/* Grid — strict 3-column */}
+        {config.type === "grid" && (
+          <div className="grid grid-cols-3 gap-3">
+            {approvedTestimonials.slice(0, 6).map((t) => (
+              <div key={t.id} className={cn("p-3 rounded-[var(--radius-md)] border", cardBg)}>
+                {config.showStars && <StarRating value={t.rating} size="sm" readonly className="mb-2" />}
+                <p className={cn("text-xs leading-relaxed line-clamp-3", textSecondary)}>&ldquo;{t.text}&rdquo;</p>
+                {config.showName && <p className={cn("text-[10px] font-medium mt-2", textPrimary)}>{t.name}</p>}
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className={cn(
-            "p-5 rounded-[var(--radius-lg)] border max-w-md",
-            isDark ? "bg-[#18181b] border-white/10" : "bg-white border-gray-200 shadow-sm"
-          )}>
-            {approvedTestimonials[0] && (
-              <>
-                {config.showStars && <StarRating value={approvedTestimonials[0].rating} size="md" readonly className="mb-3" />}
-                <p className={cn("text-sm leading-relaxed", isDark ? "text-zinc-300" : "text-gray-700")}>
-                  &ldquo;{approvedTestimonials[0].text}&rdquo;
-                </p>
-                {config.showName && (
-                  <div className="flex items-center gap-2 mt-4">
-                    {config.showAvatar && <Avatar name={approvedTestimonials[0].name} size="sm" />}
-                    <div>
-                      <p className={cn("text-xs font-medium", isDark ? "text-white" : "text-gray-900")}>{approvedTestimonials[0].name}</p>
-                      {config.showCompany && <p className={cn("text-[10px]", isDark ? "text-zinc-500" : "text-gray-500")}>{approvedTestimonials[0].company}</p>}
-                    </div>
-                  </div>
-                )}
-              </>
+        )}
+
+        {/* Carousel — single + arrows + dots */}
+        {config.type === "carousel" && t0 && (
+          <div className="relative">
+            <div className={cn("p-5 rounded-[var(--radius-lg)] border", cardBg)}>
+              {config.showStars && <StarRating value={t0.rating} size="md" readonly className="mb-3" />}
+              <p className={cn("text-sm leading-relaxed", textSecondary)}>&ldquo;{t0.text}&rdquo;</p>
+              <AuthorRow t={t0} />
+            </div>
+            {approvedTestimonials.length > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <button
+                  onClick={() => setCarouselIdx((i) => (i - 1 + approvedTestimonials.length) % approvedTestimonials.length)}
+                  className={cn("p-1.5 rounded-full border transition-colors", cardBg, "hover:border-indigo-400")}
+                >
+                  <ChevronLeft className={cn("h-4 w-4", textMuted)} />
+                </button>
+                <div className="flex gap-1.5">
+                  {approvedTestimonials.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCarouselIdx(i)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-300",
+                        i === carouselIdx ? "w-4 bg-indigo-500" : "w-1.5 bg-white/20"
+                      )}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCarouselIdx((i) => (i + 1) % approvedTestimonials.length)}
+                  className={cn("p-1.5 rounded-full border transition-colors", cardBg, "hover:border-indigo-400")}
+                >
+                  <ChevronRight className={cn("h-4 w-4", textMuted)} />
+                </button>
+              </div>
             )}
           </div>
         )}
+
+        {/* Card — single featured */}
+        {config.type === "card" && t0 && (
+          <div className={cn("p-5 rounded-[var(--radius-lg)] border max-w-sm mx-auto", cardBg)}>
+            {config.showStars && <StarRating value={t0.rating} size="md" readonly className="mb-3" />}
+            <p className={cn("text-sm leading-relaxed", textSecondary)}>&ldquo;{t0.text}&rdquo;</p>
+            <AuthorRow t={t0} />
+          </div>
+        )}
+
+        {/* Marquee — CSS scroll */}
+        {config.type === "marquee" && (
+          <div className="overflow-hidden">
+            <div className="flex animate-marquee gap-4 w-max">
+              {[...approvedTestimonials, ...approvedTestimonials].map((t, i) => (
+                <div key={i} className={cn("flex-shrink-0 w-64 p-4 rounded-[var(--radius-md)] border", cardBg)}>
+                  {config.showStars && <StarRating value={t.rating} size="sm" readonly className="mb-2" />}
+                  <p className={cn("text-xs leading-relaxed line-clamp-3", textSecondary)}>&ldquo;{t.text}&rdquo;</p>
+                  {config.showName && <p className={cn("text-[10px] font-medium mt-2", textPrimary)}>{t.name}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Badge — compact rating pill */}
+        {config.type === "badge" && (
+          <div className="flex justify-center">
+            <div className={cn("inline-flex items-center gap-3 px-4 py-2.5 rounded-full border", cardBg)}>
+              <StarRating value={4.8} size="sm" readonly />
+              <span className={cn("text-sm font-bold", textPrimary)}>4.8</span>
+              <div className={cn("w-px h-4", isDark ? "bg-white/10" : "bg-gray-200")} />
+              <span className={cn("text-xs", textMuted)}>500+ reviews</span>
+            </div>
+          </div>
+        )}
+
+        {/* Popup — corner notification */}
+        {config.type === "popup" && t0 && (
+          <div className="flex justify-end">
+            <div className={cn("w-72 p-4 rounded-[var(--radius-lg)] border shadow-lg", cardBg)}>
+              <div className="flex items-start gap-3">
+                {config.showAvatar && <Avatar name={t0.name} size="sm" />}
+                <div className="flex-1 min-w-0">
+                  {config.showName && <p className={cn("text-xs font-semibold", textPrimary)}>{t0.name}</p>}
+                  {config.showStars && <StarRating value={t0.rating} size="sm" readonly className="my-0.5" />}
+                  <p className={cn("text-xs leading-relaxed line-clamp-2", textSecondary)}>&ldquo;{t0.text}&rdquo;</p>
+                </div>
+              </div>
+              <p className={cn("text-[10px] mt-2", textMuted)}>Verified review · 2 days ago</p>
+            </div>
+          </div>
+        )}
+
+        {/* List — compact rows */}
+        {config.type === "list" && (
+          <div className={cn("rounded-[var(--radius-lg)] border overflow-hidden", isDark ? "border-white/10" : "border-gray-200")}>
+            {approvedTestimonials.map((t, i) => (
+              <div
+                key={t.id}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3",
+                  i !== 0 && (isDark ? "border-t border-white/5" : "border-t border-gray-100"),
+                  isDark ? "bg-[#18181b]" : "bg-white"
+                )}
+              >
+                {config.showAvatar && <Avatar name={t.name} size="sm" />}
+                <div className="flex-1 min-w-0">
+                  {config.showName && <p className={cn("text-xs font-medium", textPrimary)}>{t.name}</p>}
+                  <p className={cn("text-xs truncate", textSecondary)}>&ldquo;{t.text}&rdquo;</p>
+                </div>
+                {config.showStars && <StarRating value={t.rating} size="sm" readonly />}
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
-    </motion.div>
+    </div>
   );
 }
 

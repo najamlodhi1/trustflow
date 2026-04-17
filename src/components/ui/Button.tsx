@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ const buttonVariants = cva(
           "border border-[var(--border-default)] text-text-primary hover:bg-bg-overlay hover:border-[var(--border-strong)]",
         gradient:
           "text-white shadow-sm bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500",
+        warning:
+          "bg-amber-500 text-white hover:bg-amber-400",
       },
       size: {
         sm: "h-9 px-3 text-sm rounded-[var(--radius-sm)]",
@@ -44,19 +47,13 @@ export interface ButtonProps
   rightIcon?: React.ReactNode;
 }
 
-export function Button({
-  className,
-  variant,
-  size,
-  loading,
-  leftIcon,
-  rightIcon,
-  children,
-  disabled,
-  ...props
-}: ButtonProps) {
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant, size, loading, leftIcon, rightIcon, children, disabled, ...props },
+  ref
+) {
   return (
     <button
+      ref={ref}
       className={cn(buttonVariants({ variant, size }), className)}
       disabled={disabled || loading}
       {...props}
@@ -70,4 +67,4 @@ export function Button({
       {!loading && rightIcon}
     </button>
   );
-}
+});

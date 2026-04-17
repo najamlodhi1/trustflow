@@ -1,15 +1,28 @@
 "use client";
 
 import { useState, use } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Check, ArrowRight, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { StarRating } from "@/components/ui/StarRating";
-import { scaleIn } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 
 type Step = "rating" | "testimonial" | "feedback" | "thanks";
+
+const STEP_NUMBER: Record<Step, number> = {
+  rating: 1,
+  testimonial: 2,
+  feedback: 2,
+  thanks: 3,
+};
+
+const RATING_LABEL: Record<number, string> = {
+  1: "We're really sorry to hear that.",
+  2: "We're sorry your experience wasn't great.",
+  3: "Thanks for your honest feedback!",
+  4: "That's great to hear! 😊",
+  5: "Amazing! Thank you so much! 🎉",
+};
 
 export default function CollectPage({
   params,
@@ -19,8 +32,12 @@ export default function CollectPage({
   const { slug: _slug } = use(params);
 
   const [step, setStep] = useState<Step>("rating");
+  const [visible, setVisible] = useState(true);
   const [rating, setRating] = useState(0);
   const [path, setPath] = useState<"happy" | "unhappy">("happy");
+  const [hovered, setHovered] = useState(0);
+  const [bouncingStar, setBouncingStar] = useState(0);
+  const [showThanks, setShowThanks] = useState(false);
 
   // Happy path fields
   const [name, setName] = useState("");
@@ -35,11 +52,25 @@ export default function CollectPage({
 
   const [submitting, setSubmitting] = useState(false);
 
+  function goToStep(nextStep: Step, delay = 0) {
+    setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setStep(nextStep);
+        setVisible(true);
+      }, 280);
+    }, delay);
+  }
+
   function handleRating(star: number) {
+    if (rating > 0) return; // prevent re-selection
     setRating(star);
+    setBouncingStar(star);
+    setShowThanks(true);
+    setTimeout(() => setBouncingStar(0), 520);
     const isHappy = star >= 4;
     setPath(isHappy ? "happy" : "unhappy");
-    setTimeout(() => setStep(isHappy ? "testimonial" : "feedback"), 500);
+    goToStep(isHappy ? "testimonial" : "feedback", 700);
   }
 
   async function handleSubmitTestimonial() {
@@ -47,7 +78,7 @@ export default function CollectPage({
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 1000));
     setSubmitting(false);
-    setStep("thanks");
+    goToStep("thanks");
   }
 
   async function handleSubmitFeedback() {
@@ -55,11 +86,11 @@ export default function CollectPage({
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 800));
     setSubmitting(false);
-    setStep("thanks");
+    goToStep("thanks");
   }
 
-  // 0 = rating, 1 = form (testimonial/feedback)
-  const stepIndex = step === "rating" ? 0 : 1;
+  const stepNumber = STEP_NUMBER[step];
+  const progressPct = (stepNumber / 3) * 100;
 
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-4">
@@ -72,38 +103,45 @@ export default function CollectPage({
         <p className="text-sm text-text-secondary mt-0.5">Share your experience with us</p>
       </div>
 
-      {/* Progress indicator */}
-      {step !== "thanks" && (
-        <div className="flex items-center gap-2 mb-8" role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemin={1} aria-valuemax={2}>
-          {[0, 1].map((i) => (
-            <div
-              key={i}
-              className={cn(
-                "h-2 rounded-full transition-all duration-300",
-                i === stepIndex
-                  ? "w-6 bg-brand-primary"
-                  : i < stepIndex
-                  ? "w-2 bg-indigo-500/60"
-                  : "w-2 bg-bg-overlay"
-              )}
-            />
-          ))}
-          <span className="sr-only">Step {stepIndex + 1} of 2</span>
+      {/* Step progress bar */}
+      <div className="w-full max-w-lg mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-text-secondary">Step {stepNumber} of 3</span>
+          <span className="text-xs text-text-tertiary">
+            {step === "rating" && "Rate your experience"}
+            {step === "testimonial" && "Write your testimonial"}
+            {step === "feedback" && "Share your feedback"}
+            {step === "thanks" && "All done!"}
+          </span>
         </div>
-      )}
+        <div
+          className="h-1.5 rounded-full bg-bg-overlay overflow-hidden"
+          role="progressbar"
+          aria-valuenow={stepNumber}
+          aria-valuemin={1}
+          aria-valuemax={3}
+          aria-label={`Step ${stepNumber} of 3`}
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 transition-all duration-500 ease-out"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
 
+      {/* Step content */}
       <div className="w-full max-w-lg">
-        <AnimatePresence mode="wait">
-          {/* Step 1: Rating */}
+        <div
+          className={cn(
+            "transition-all duration-300 ease-out",
+            visible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-3 pointer-events-none"
+          )}
+        >
+          {/* ── Step 1: Star rating ─────────────────────────────── */}
           {step === "rating" && (
-            <motion.div
-              key="rating"
-              variants={scaleIn}
-              initial="hidden"
-              animate="show"
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 text-center space-y-8"
-            >
+            <div className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 text-center space-y-8">
               <div>
                 <h2 className="text-xl font-bold text-text-primary">
                   How would you rate your experience?
@@ -111,52 +149,75 @@ export default function CollectPage({
                 <p className="text-sm text-text-secondary mt-1">Tap a star to get started</p>
               </div>
 
-              <div className="flex justify-center gap-3">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <motion.button
-                    key={star}
-                    whileHover={{ scale: 1.2 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => handleRating(star)}
-                    className="text-4xl min-w-[48px] min-h-[48px] flex items-center justify-center transition-all duration-150"
-                    aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
-                  >
-                    <span
+              {/* Interactive stars */}
+              <div
+                className="flex justify-center gap-3"
+                role="radiogroup"
+                aria-label="Star rating"
+              >
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isFilled = star <= (hovered || rating);
+                  const isBouncing = bouncingStar === star;
+                  const fillDelay = isFilled
+                    ? `${(star - 1) * 35}ms`
+                    : `${(5 - star) * 35}ms`;
+
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      role="radio"
+                      aria-checked={rating === star}
+                      aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
+                      onClick={() => handleRating(star)}
+                      onMouseEnter={() => !rating && setHovered(star)}
+                      onMouseLeave={() => !rating && setHovered(0)}
+                      disabled={rating > 0}
                       className={cn(
-                        "transition-all duration-150",
-                        star <= rating ? "filter-none" : "grayscale opacity-40"
+                        "text-4xl min-w-[48px] min-h-[48px] flex items-center justify-center",
+                        "transition-transform duration-150 select-none",
+                        "active:scale-90",
+                        !rating && "hover:scale-110 cursor-pointer",
+                        rating > 0 && "cursor-default",
+                        isBouncing && "animate-star-bounce"
                       )}
                     >
-                      ⭐
-                    </span>
-                  </motion.button>
-                ))}
+                      <span
+                        className="inline-block transition-all duration-200"
+                        style={{
+                          filter: isFilled
+                            ? "drop-shadow(0 0 6px rgba(251,191,36,0.55))"
+                            : "grayscale(1)",
+                          opacity: isFilled ? 1 : 0.35,
+                          transitionDelay: fillDelay,
+                        }}
+                      >
+                        ⭐
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {rating > 0 && (
-                <p className="text-sm text-text-secondary animate-pulse">
-                  {rating <= 2
-                    ? "We're sorry to hear that..."
-                    : rating === 3
-                    ? "Thanks for your honest feedback!"
-                    : rating === 4
-                    ? "That's great! 😊"
-                    : "Amazing! 🎉"}
-                </p>
-              )}
-            </motion.div>
+              {/* Micro-text */}
+              <div className="h-5">
+                {showThanks ? (
+                  <p
+                    className="text-sm font-medium text-brand-success transition-opacity duration-300"
+                    aria-live="polite"
+                  >
+                    ✓ Thanks! One more step...
+                  </p>
+                ) : rating > 0 ? (
+                  <p className="text-sm text-text-secondary">{RATING_LABEL[rating]}</p>
+                ) : null}
+              </div>
+            </div>
           )}
 
-          {/* Step 2a: Testimonial form — happy path (4–5 stars) */}
+          {/* ── Step 2a: Testimonial form (happy path: 4–5 stars) ── */}
           {step === "testimonial" && (
-            <motion.div
-              key="testimonial"
-              variants={scaleIn}
-              initial="hidden"
-              animate="show"
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-5"
-            >
+            <div className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-5">
               <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <StarRating value={rating} size="lg" readonly />
@@ -249,19 +310,12 @@ export default function CollectPage({
                   ⭐ Leave a Google Review
                 </Button>
               </div>
-            </motion.div>
+            </div>
           )}
 
-          {/* Step 2b: Private feedback form — unhappy path (1–3 stars) */}
+          {/* ── Step 2b: Private feedback (unhappy path: 1–3 stars) ── */}
           {step === "feedback" && (
-            <motion.div
-              key="feedback"
-              variants={scaleIn}
-              initial="hidden"
-              animate="show"
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-5"
-            >
+            <div className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-5">
               <div>
                 <div className="flex justify-center mb-3">
                   <StarRating value={rating} size="lg" readonly />
@@ -301,26 +355,17 @@ export default function CollectPage({
               >
                 Send feedback
               </Button>
-            </motion.div>
+            </div>
           )}
 
-          {/* Step 3: Thank you */}
+          {/* ── Step 3: Thank you ───────────────────────────────── */}
           {step === "thanks" && (
-            <motion.div
-              key="thanks"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", bounce: 0.4 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-12 text-center space-y-6"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", bounce: 0.5 }}
-                className="mx-auto h-16 w-16 rounded-full bg-brand-success/10 border-2 border-brand-success/30 flex items-center justify-center"
+            <div className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-12 text-center space-y-6">
+              <div
+                className="mx-auto h-16 w-16 rounded-full bg-brand-success/10 border-2 border-brand-success/30 flex items-center justify-center animate-pop-in"
               >
                 <Check className="h-8 w-8 text-brand-success" aria-hidden="true" />
-              </motion.div>
+              </div>
 
               <div>
                 <h2 className="text-2xl font-bold text-text-primary">
@@ -340,9 +385,9 @@ export default function CollectPage({
               >
                 Return to TrustFlow Demo
               </Button>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </div>
       </div>
 
       <p className="mt-8 text-[10px] text-text-tertiary">

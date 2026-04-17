@@ -27,7 +27,7 @@ export function Card({
         "rounded-[var(--radius-lg)] border transition-all duration-200",
         "bg-bg-surface border-[var(--border-subtle)]",
         "shadow-[var(--shadow-sm)]",
-        hover && "hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)] cursor-pointer",
+        hover && "hover:border-[var(--border-default)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 cursor-pointer",
         glow && "hover:shadow-[var(--shadow-glow)]",
         paddingClasses[padding],
         className
@@ -42,7 +42,7 @@ export function Card({
 interface StatCardProps {
   icon: React.ReactNode;
   label: string;
-  value: string | number;
+  value: React.ReactNode;
   trend?: { value: string; positive: boolean };
   className?: string;
 }

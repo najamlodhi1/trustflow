@@ -17,6 +17,7 @@ import { Header } from "@/components/layout/Header";
 import { staggerContainer, fadeUp } from "@/lib/animations";
 import { formatNumber, timeAgo } from "@/lib/utils";
 import { SEED_TESTIMONIALS } from "@/lib/constants";
+import { toast } from "sonner";
 
 const STATS = [
   { label: "Total Proof", value: 1284, trend: { value: "12% mo", positive: true }, icon: <MessageSquare className="h-5 w-5" /> },
@@ -147,7 +148,20 @@ function CountUp({ target, duration = 1500 }: { target: number; duration?: numbe
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const pending = SEED_TESTIMONIALS.filter((t) => t.status === "pending");
+  const [pendingIds, setPendingIds] = useState<Set<string>>(
+    () => new Set(SEED_TESTIMONIALS.filter((t) => t.status === "pending").map((t) => t.id))
+  );
+  const pending = SEED_TESTIMONIALS.filter((t) => pendingIds.has(t.id));
+
+  function approveItem(id: string, name: string) {
+    setPendingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    toast.success(`Approved testimonial from ${name}`);
+  }
+
+  function rejectItem(id: string, name: string) {
+    setPendingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    toast.success(`Rejected testimonial from ${name}`);
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 800);
@@ -289,10 +303,21 @@ export default function DashboardPage() {
                     &ldquo;{t.text}&rdquo;
                   </p>
                   <div className="flex gap-2">
-                    <Button variant="primary" size="sm" className="flex-1 text-xs h-7" leftIcon={<Check className="h-3 w-3" />}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="flex-1 text-xs h-7"
+                      leftIcon={<Check className="h-3 w-3" />}
+                      onClick={() => approveItem(t.id, t.name)}
+                    >
                       Approve
                     </Button>
-                    <Button variant="ghost" size="sm" className="flex-1 text-xs h-7">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-xs h-7"
+                      onClick={() => rejectItem(t.id, t.name)}
+                    >
                       Reject
                     </Button>
                   </div>

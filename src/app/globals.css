@@ -120,6 +120,38 @@ body {
 }
 .animate-marquee { animation: marquee 28s linear infinite; }
 
+/* ─── Top progress bar ───────────────────────────────────────── */
+@keyframes progress-bar {
+  0%   { width: 0%;   opacity: 1; }
+  55%  { width: 80%;  opacity: 1; }
+  80%  { width: 93%;  opacity: 1; }
+  95%  { width: 100%; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+.animate-progress-bar {
+  height: 100%;
+  background: linear-gradient(to right, var(--brand-primary), var(--brand-secondary));
+  animation: progress-bar 900ms ease-out forwards;
+}
+
+/* ─── Star bounce (collection page) ─────────────────────────── */
+@keyframes star-bounce {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.45) rotate(-6deg); }
+  55%  { transform: scale(0.88) rotate(3deg); }
+  78%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.animate-star-bounce { animation: star-bounce 0.5s ease forwards; }
+
+/* ─── Pop-in (thanks check) ──────────────────────────────────── */
+@keyframes pop-in {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
 /* ─── Reduced motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

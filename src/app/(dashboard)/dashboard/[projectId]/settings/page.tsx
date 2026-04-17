@@ -4,7 +4,7 @@ import { useState, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check, AlertTriangle, Copy, RefreshCw,
-  Download, ExternalLink, Trash2,
+  Download, ExternalLink, Trash2, Plus, X, Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,6 +36,8 @@ export default function SettingsPage({
   const [deleteInput, setDeleteInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [questions, setQuestions] = useState(["What did you enjoy most about working with us?"]);
+  const [newQuestion, setNewQuestion] = useState("");
 
   async function handleSave() {
     setSaving(true);
@@ -118,6 +120,7 @@ export default function SettingsPage({
               { name: "Google Business Profile", connected: true, lastSync: "2 hours ago", icon: "🔵" },
               { name: "Trustpilot", connected: false, icon: "🟢" },
               { name: "Yelp", connected: false, icon: "🔴" },
+              { name: "Facebook", connected: false, icon: "🔷" },
             ].map((platform) => (
               <Card key={platform.name}>
                 <div className="flex items-center justify-between">
@@ -125,21 +128,41 @@ export default function SettingsPage({
                     <span className="text-2xl">{platform.icon}</span>
                     <div>
                       <p className="text-sm font-medium text-text-primary">{platform.name}</p>
-                      {platform.connected && (
+                      {platform.connected ? (
                         <p className="text-xs text-text-tertiary">Last synced: {platform.lastSync}</p>
+                      ) : (
+                        <p className="text-xs text-text-tertiary">Not connected</p>
                       )}
                     </div>
                   </div>
                   {platform.connected ? (
                     <div className="flex gap-2">
                       <Badge variant="success" dot>Connected</Badge>
-                      <Button variant="ghost" size="sm" leftIcon={<RefreshCw className="h-3.5 w-3.5" />} className="h-7 text-xs">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                        className="h-7 text-xs"
+                        onClick={() => toast.success(`${platform.name} synced`)}
+                      >
                         Sync now
                       </Button>
-                      <Button variant="secondary" size="sm" className="h-7 text-xs">Disconnect</Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => toast.success(`${platform.name} disconnected`)}
+                      >
+                        Disconnect
+                      </Button>
                     </div>
                   ) : (
-                    <Button variant="primary" size="sm" rightIcon={<ExternalLink className="h-3.5 w-3.5" />}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      rightIcon={<ExternalLink className="h-3.5 w-3.5" />}
+                      onClick={() => toast.info(`${platform.name} integration coming soon`)}
+                    >
                       Connect →
                     </Button>
                   )}
@@ -180,12 +203,34 @@ export default function SettingsPage({
 
         {/* Collection page */}
         {tab === "collection" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <Card>
-              <h2 className="text-sm font-semibold text-text-primary mb-5">Collection Page Settings</h2>
+              <h2 className="text-sm font-semibold text-text-primary mb-5">Branding</h2>
               <div className="space-y-5 max-w-md">
+                {/* Logo upload */}
                 <div>
-                  <p className="text-sm font-medium text-text-secondary mb-2">Accent colour</p>
+                  <p className="text-sm font-medium text-text-secondary mb-2">Logo</p>
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)] flex items-center justify-center flex-shrink-0">
+                      <span className="text-xl font-bold text-text-tertiary">T</span>
+                    </div>
+                    <div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={<Upload className="h-4 w-4" />}
+                        onClick={() => toast.info("Logo upload coming soon")}
+                      >
+                        Upload logo
+                      </Button>
+                      <p className="text-xs text-text-tertiary mt-1">PNG or SVG, max 512 KB</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Brand colour */}
+                <div>
+                  <p className="text-sm font-medium text-text-secondary mb-2">Brand colour</p>
                   <div className="flex gap-3">
                     {["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b"].map((c) => (
                       <button
@@ -197,11 +242,64 @@ export default function SettingsPage({
                     ))}
                   </div>
                 </div>
+              </div>
+            </Card>
+
+            <Card>
+              <h2 className="text-sm font-semibold text-text-primary mb-5">Content</h2>
+              <div className="space-y-5 max-w-md">
+                <Input
+                  label="Headline"
+                  defaultValue="Share your experience with us"
+                  helperText="Shown at the top of your collection page"
+                />
                 <Input
                   label="Thank-you message"
                   defaultValue="Thank you for your feedback! We really appreciate it."
-                  helperText="Shown after the customer submits their testimonial"
+                  helperText="Shown after the customer submits"
                 />
+
+                {/* Custom questions */}
+                <div>
+                  <p className="text-sm font-medium text-text-secondary mb-2">Custom questions</p>
+                  <p className="text-xs text-text-tertiary mb-3">Customers see these as prompts when writing their testimonial.</p>
+                  <div className="space-y-2">
+                    {questions.map((q, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="flex-1 rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)] px-3 py-2 text-sm text-text-secondary">
+                          {q}
+                        </div>
+                        <button
+                          onClick={() => setQuestions((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="text-text-tertiary hover:text-brand-danger transition-colors flex-shrink-0"
+                          aria-label="Remove question"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!newQuestion.trim()) return;
+                        setQuestions((prev) => [...prev, newQuestion.trim()]);
+                        setNewQuestion("");
+                      }}
+                      className="flex gap-2"
+                    >
+                      <input
+                        className="flex-1 h-9 px-3 rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-brand-primary transition-colors"
+                        placeholder="Add a question..."
+                        value={newQuestion}
+                        onChange={(e) => setNewQuestion(e.target.value)}
+                      />
+                      <Button type="submit" variant="secondary" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
+                        Add
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+
                 <label className="flex items-center justify-between">
                   <span className="text-sm text-text-secondary">Show AI Enhance button</span>
                   <button

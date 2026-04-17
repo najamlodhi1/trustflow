@@ -19,7 +19,12 @@ import { timeAgo, cn, copyToClipboard } from "@/lib/utils";
 import { PLATFORMS } from "@/lib/constants";
 import { toast } from "sonner";
 
-const REVIEWS = [
+type Review = {
+  id: string; name: string; company: string; rating: number;
+  text: string; source: string; replied: boolean; createdAt: string;
+};
+
+const REVIEWS_SEED: Review[] = [
   {
     id: "r1", name: "David Park", company: "Nomad Studio", rating: 5,
     text: "Absolutely brilliant service. Everything was delivered on time and the quality was superb.",
@@ -62,7 +67,7 @@ function PlatformBadge({ source }: { source: string }) {
   );
 }
 
-function AIResponsePanel({ review, onClose }: { review: typeof REVIEWS[0]; onClose: () => void }) {
+function AIResponsePanel({ review, onClose }: { review: Review; onClose: () => void }) {
   const [generating, setGenerating] = useState(false);
   const [response, setResponse] = useState("");
   const [copied, setCopied] = useState(false);
@@ -184,91 +189,198 @@ function AIResponsePanel({ review, onClose }: { review: typeof REVIEWS[0]; onClo
   );
 }
 
-function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ImportModal({
+  open, onClose, onManualAdd,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onManualAdd: (r: Review) => void;
+}) {
+  const [tab, setTab] = useState<"import" | "manual">("import");
   const [platform, setPlatform] = useState<string | null>(null);
   const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Manual add form
+  const [manualName, setManualName] = useState("");
+  const [manualCompany, setManualCompany] = useState("");
+  const [manualRating, setManualRating] = useState(5);
+  const [manualText, setManualText] = useState("");
+  const [manualSource, setManualSource] = useState("google");
+  const [adding, setAdding] = useState(false);
 
   async function handleImport() {
     if (!url) return;
-    setLoading(true);
+    setImporting(true);
     await new Promise((r) => setTimeout(r, 2500));
-    setLoading(false);
+    setImporting(false);
     setDone(true);
-    setTimeout(() => {
-      onClose();
-      setDone(false);
-      setUrl("");
-      setPlatform(null);
-    }, 1500);
     toast.success("24 reviews imported successfully");
+    setTimeout(() => { onClose(); setDone(false); setUrl(""); setPlatform(null); }, 1500);
+  }
+
+  async function handleManualAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!manualName || !manualText) return;
+    setAdding(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setAdding(false);
+    onManualAdd({
+      id: `r-${Date.now()}`,
+      name: manualName,
+      company: manualCompany,
+      rating: manualRating,
+      text: manualText,
+      source: manualSource,
+      replied: false,
+      createdAt: new Date().toISOString(),
+    });
+    toast.success(`Review from ${manualName} added`);
+    setManualName(""); setManualCompany(""); setManualRating(5); setManualText("");
+    onClose();
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Import Reviews" size="sm">
-      <div className="p-6 space-y-6">
-        <div>
-          <p className="text-sm text-text-secondary mb-3">Choose platform:</p>
-          <div className="grid grid-cols-3 gap-2">
-            {PLATFORMS.slice(0, 6).map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setPlatform(p.id)}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 p-3 rounded-[var(--radius-md)] border text-xs font-medium transition-all duration-150",
-                  platform === p.id
-                    ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
-                    : "border-[var(--border-subtle)] text-text-secondary hover:border-[var(--border-default)] hover:bg-bg-overlay"
-                )}
-              >
-                <span className="text-lg">{p.emoji}</span>
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {platform && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
-          >
-            <Input
-              label={`Paste your ${PLATFORMS.find((p) => p.id === platform)?.name} URL:`}
-              placeholder="https://..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
-
-            {loading ? (
-              <div className="space-y-2">
-                <div className="h-1.5 rounded-full bg-bg-overlay overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600"
-                    initial={{ width: "0%" }}
-                    animate={{ width: "100%" }}
-                    transition={{ duration: 2.5, ease: "easeInOut" }}
-                  />
-                </div>
-                <p className="text-xs text-text-tertiary text-center">Fetching your reviews...</p>
-              </div>
-            ) : done ? (
-              <div className="text-center py-2">
-                <p className="text-sm text-brand-success font-medium">✓ Found 24 reviews. Importing...</p>
-              </div>
-            ) : (
-              <Button variant="gradient" size="md" className="w-full" onClick={handleImport} disabled={!url}>
-                Import Reviews →
-              </Button>
+    <Modal open={open} onClose={onClose} title="Add Reviews" size="sm">
+      {/* Tabs */}
+      <div className="flex border-b border-[var(--border-subtle)] px-6">
+        {(["import", "manual"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cn(
+              "pb-3 pt-4 px-1 mr-5 text-sm font-medium border-b-2 transition-all",
+              tab === t
+                ? "border-brand-primary text-text-primary"
+                : "border-transparent text-text-secondary hover:text-text-primary"
             )}
+          >
+            {t === "import" ? "Import from URL" : "Add manually"}
+          </button>
+        ))}
+      </div>
 
-            <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
-              <input type="checkbox" defaultChecked className="accent-indigo-500" />
-              Auto-sync every 24 hours
-            </label>
-          </motion.div>
+      <div className="p-6">
+        {tab === "import" && (
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm text-text-secondary mb-3">Choose platform:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PLATFORMS.slice(0, 6).map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setPlatform(p.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 p-3 rounded-[var(--radius-md)] border text-xs font-medium transition-all duration-150",
+                      platform === p.id
+                        ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
+                        : "border-[var(--border-subtle)] text-text-secondary hover:border-[var(--border-default)] hover:bg-bg-overlay"
+                    )}
+                  >
+                    <span className="text-lg">{p.emoji}</span>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {platform && (
+              <div className="space-y-3">
+                <Input
+                  label={`Paste your ${PLATFORMS.find((p) => p.id === platform)?.name} URL:`}
+                  placeholder="https://..."
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                />
+                {importing ? (
+                  <div className="space-y-2">
+                    <div className="h-1.5 rounded-full bg-bg-overlay overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 transition-all duration-[2500ms] ease-in-out"
+                        style={{ width: importing ? "100%" : "0%" }}
+                      />
+                    </div>
+                    <p className="text-xs text-text-tertiary text-center">Fetching your reviews...</p>
+                  </div>
+                ) : done ? (
+                  <div className="text-center py-2">
+                    <p className="text-sm text-brand-success font-medium">✓ Found 24 reviews. Importing...</p>
+                  </div>
+                ) : (
+                  <Button variant="gradient" size="md" className="w-full" onClick={handleImport} disabled={!url}>
+                    Import Reviews →
+                  </Button>
+                )}
+                <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+                  <input type="checkbox" defaultChecked className="accent-indigo-500" />
+                  Auto-sync every 24 hours
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "manual" && (
+          <form onSubmit={handleManualAdd} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Reviewer name *"
+                placeholder="Jane Smith"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                required
+              />
+              <Input
+                label="Company"
+                placeholder="Acme Inc."
+                value={manualCompany}
+                onChange={(e) => setManualCompany(e.target.value)}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text-secondary mb-2">Rating *</p>
+              <StarRating value={manualRating} onChange={setManualRating} size="lg" />
+            </div>
+            <Textarea
+              label="Review text *"
+              placeholder="What did they say?"
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              rows={3}
+              required
+            />
+            <div>
+              <p className="text-sm font-medium text-text-secondary mb-2">Source</p>
+              <div className="flex gap-2 flex-wrap">
+                {["google", "trustpilot", "yelp", "facebook", "other"].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setManualSource(s)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-xs font-medium border transition-all",
+                      manualSource === s
+                        ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
+                        : "border-[var(--border-subtle)] text-text-secondary hover:border-[var(--border-default)]"
+                    )}
+                  >
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button
+              type="submit"
+              variant="gradient"
+              size="md"
+              className="w-full"
+              loading={adding}
+              disabled={!manualName || !manualText}
+            >
+              Add review
+            </Button>
+          </form>
         )}
       </div>
     </Modal>
@@ -281,11 +393,13 @@ export default function ReviewsPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = use(params);
+  void projectId;
+  const [reviews, setReviews] = useState<Review[]>(REVIEWS_SEED);
   const [search, setSearch] = useState("");
   const [importOpen, setImportOpen] = useState(false);
-  const [aiReview, setAiReview] = useState<typeof REVIEWS[0] | null>(null);
+  const [aiReview, setAiReview] = useState<Review | null>(null);
 
-  const filtered = REVIEWS.filter(
+  const filtered = reviews.filter(
     (r) =>
       !search ||
       r.text.toLowerCase().includes(search.toLowerCase()) ||
@@ -375,7 +489,11 @@ export default function ReviewsPage({
         )}
       </div>
 
-      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onManualAdd={(r) => setReviews((prev) => [r, ...prev])}
+      />
 
       <AnimatePresence>
         {aiReview && (

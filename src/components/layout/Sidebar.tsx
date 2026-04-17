@@ -93,11 +93,16 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                   title={collapsed ? item.label : undefined}
                 >
                   {active && (
-                    <motion.div
-                      className="absolute inset-0 rounded-[var(--radius-md)] bg-indigo-500/10"
-                      layoutId="nav-active"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                    />
+                    <>
+                      <motion.div
+                        className="absolute inset-0 rounded-[var(--radius-md)] bg-indigo-500/10"
+                        layoutId="nav-active"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                      />
+                      {!collapsed && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-brand-primary" />
+                      )}
+                    </>
                   )}
                   <Icon
                     className={cn(

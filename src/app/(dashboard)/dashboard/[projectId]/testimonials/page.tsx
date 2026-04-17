@@ -51,6 +51,7 @@ function TestimonialCard({
   onApprove,
   onReject,
   onFeature,
+  onOpen,
 }: {
   t: Testimonial;
   selected: boolean;
@@ -58,6 +59,7 @@ function TestimonialCard({
   onApprove: () => void;
   onReject: () => void;
   onFeature: () => void;
+  onOpen: () => void;
 }) {
   const [polishOpen, setPolishOpen] = useState(false);
   const [polishing, setPolishing] = useState(false);
@@ -84,13 +86,14 @@ function TestimonialCard({
           : "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
       )}
     >
-      <div className="p-5">
+      <div className="p-5 cursor-pointer" onClick={onOpen}>
         {/* Header row */}
         <div className="flex items-start gap-3">
           <input
             type="checkbox"
             checked={selected}
-            onChange={onSelect}
+            onChange={(e) => { e.stopPropagation(); onSelect(); }}
+            onClick={(e) => e.stopPropagation()}
             className="mt-1 h-4 w-4 rounded border-[var(--border-default)] accent-indigo-500"
             aria-label={`Select testimonial from ${t.name}`}
           />
@@ -137,7 +140,7 @@ function TestimonialCard({
         </div>
 
         {/* Action buttons (show on hover) */}
-        <div className="mt-4 ml-11 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-4 ml-11 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
           {t.status !== "approved" && (
             <Button
               variant="primary"
@@ -275,6 +278,7 @@ export default function TestimonialsPage({
     SEED_TESTIMONIALS.map((t) => ({ ...t, tags: [...t.tags] }))
   );
   const [loading] = useState(false);
+  const [detailPanel, setDetailPanel] = useState<Testimonial | null>(null);
 
   // suppress unused warning — projectId will be used for data fetching
   void projectId;
@@ -304,9 +308,12 @@ export default function TestimonialsPage({
   }
 
   function toggleFeature(id: string) {
+    const current = testimonials.find((t) => t.id === id);
+    const wasFeatured = current?.featured ?? false;
     setTestimonials((prev) =>
       prev.map((t) => t.id === id ? { ...t, featured: !t.featured } : t)
     );
+    toast.success(wasFeatured ? "Removed from featured" : "Marked as featured ⭐");
   }
 
   function toggleSelect(id: string) {
@@ -417,6 +424,7 @@ export default function TestimonialsPage({
                 onApprove={() => updateStatus(t.id, "approved")}
                 onReject={() => updateStatus(t.id, "rejected")}
                 onFeature={() => toggleFeature(t.id)}
+                onOpen={() => setDetailPanel(t)}
               />
             ))}
           </motion.div>
@@ -471,6 +479,141 @@ export default function TestimonialsPage({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Detail panel backdrop ─────────────────────────────── */}
+      <div
+        className={cn(
+          "fixed inset-0 z-30 bg-black/50 transition-opacity duration-300",
+          detailPanel ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setDetailPanel(null)}
+      />
+
+      {/* ── Detail panel ──────────────────────────────────────── */}
+      <div
+        className={cn(
+          "fixed inset-y-0 right-0 z-40 w-full max-w-md flex flex-col",
+          "bg-bg-elevated border-l border-[var(--border-default)]",
+          "shadow-[var(--shadow-md)]",
+          "transition-transform duration-300 ease-out",
+          detailPanel ? "translate-x-0" : "translate-x-full"
+        )}
+        aria-label="Testimonial detail"
+      >
+        {detailPanel && (
+          <>
+            {/* Panel header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
+              <h2 className="text-sm font-semibold text-text-primary">Testimonial details</h2>
+              <Button variant="ghost" size="icon" onClick={() => setDetailPanel(null)} aria-label="Close">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Panel body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Author */}
+              <div className="flex items-center gap-4">
+                <Avatar name={detailPanel.name} size="md" sourceBadge={detailPanel.source as never} />
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">{detailPanel.name}</p>
+                  {detailPanel.title && detailPanel.company && (
+                    <p className="text-xs text-text-tertiary">{detailPanel.title} · {detailPanel.company}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <StarRating value={detailPanel.rating} size="sm" readonly />
+                    <Badge variant={statusBadgeVariant(detailPanel.status)} dot>
+                      {detailPanel.status.charAt(0).toUpperCase() + detailPanel.status.slice(1)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full testimonial text */}
+              <div className="rounded-[var(--radius-md)] bg-bg-surface border border-[var(--border-subtle)] p-4">
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  &ldquo;{detailPanel.text}&rdquo;
+                </p>
+              </div>
+
+              {/* Meta */}
+              <div className="space-y-2">
+                {detailPanel.tags.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {detailPanel.tags.map((tag) => (
+                      <Badge key={tag} variant="default" className="text-[10px]">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-text-tertiary">
+                  Source: <span className="capitalize text-text-secondary">{detailPanel.source}</span>
+                  {" · "}{timeAgo(new Date(detailPanel.createdAt))}
+                </p>
+                <p className="text-xs text-text-tertiary flex items-center gap-1">
+                  Featured:{" "}
+                  <span className={detailPanel.featured ? "text-amber-400" : "text-text-tertiary"}>
+                    {detailPanel.featured ? "⭐ Yes" : "No"}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Panel actions */}
+            <div className="border-t border-[var(--border-subtle)] p-4 space-y-2">
+              <div className="flex gap-2">
+                {detailPanel.status !== "approved" && (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    className="flex-1"
+                    leftIcon={<Check className="h-4 w-4" />}
+                    onClick={() => {
+                      updateStatus(detailPanel.id, "approved");
+                      setDetailPanel((p) => p ? { ...p, status: "approved" } : null);
+                    }}
+                  >
+                    Approve
+                  </Button>
+                )}
+                {detailPanel.status !== "rejected" && (
+                  <Button
+                    variant="danger"
+                    size="md"
+                    className="flex-1"
+                    leftIcon={<X className="h-4 w-4" />}
+                    onClick={() => {
+                      updateStatus(detailPanel.id, "rejected");
+                      setDetailPanel((p) => p ? { ...p, status: "rejected" } : null);
+                    }}
+                  >
+                    Reject
+                  </Button>
+                )}
+              </div>
+              <Button
+                variant="secondary"
+                size="md"
+                className="w-full"
+                leftIcon={<StarIcon className="h-4 w-4" />}
+                onClick={() => {
+                  toggleFeature(detailPanel.id);
+                  setDetailPanel((p) => p ? { ...p, featured: !p.featured } : null);
+                }}
+              >
+                {detailPanel.featured ? "Remove from featured" : "Mark as featured"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
+                className="w-full"
+                leftIcon={<Sparkles className="h-4 w-4 text-indigo-400" />}
+              >
+                AI Polish
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
