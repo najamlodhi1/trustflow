@@ -5,8 +5,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   MessageSquare, Star, TrendingUp, Eye,
-  Plus, Share2, Send, Import, Layout,
-  ArrowRight, Check, Clock, RefreshCw,
+  Plus, Share2, Send, Layout,
+  ArrowRight, Check, RefreshCw, X,
 } from "lucide-react";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -40,6 +40,93 @@ const QUICK_ACTIONS = [
   { label: "Import reviews", icon: RefreshCw, href: "/dashboard/demo/reviews" },
   { label: "Create widget", icon: Layout, href: "/dashboard/demo/widgets" },
 ];
+
+const CHECKLIST = [
+  { label: "Create your account", done: true },
+  { label: "Customise your collection page", done: false, href: "/dashboard/demo/settings" },
+  { label: "Share your collection link", done: false, href: "/collect/demo" },
+  { label: "Create your first widget", done: false, href: "/dashboard/demo/widgets" },
+  { label: "Embed widget on your website", done: false },
+] as const;
+
+function GettingStartedChecklist() {
+  const [dismissed, setDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (localStorage.getItem("tf-checklist-dismissed") === "1") {
+      setDismissed(true);
+    }
+  }, []);
+
+  function dismiss() {
+    setDismissed(true);
+    localStorage.setItem("tf-checklist-dismissed", "1");
+  }
+
+  if (!mounted || dismissed) return null;
+
+  const doneCount = CHECKLIST.filter((i) => i.done).length;
+  const progress = (doneCount / CHECKLIST.length) * 100;
+
+  return (
+    <div className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-bg-surface overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
+        <div>
+          <h3 className="text-sm font-semibold text-text-primary">Getting started with TrustFlow</h3>
+          <p className="text-xs text-text-tertiary mt-0.5">
+            {doneCount} of {CHECKLIST.length} complete
+          </p>
+        </div>
+        <button
+          onClick={dismiss}
+          aria-label="Dismiss checklist"
+          className="text-text-tertiary hover:text-text-secondary transition-colors p-1 rounded"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="h-1 bg-bg-overlay">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-500 to-violet-600 transition-all duration-500"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <ul className="divide-y divide-[var(--border-subtle)]">
+        {CHECKLIST.map((item, i) => (
+          <li key={i} className="flex items-center gap-3 px-6 py-3">
+            <div
+              className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                item.done
+                  ? "border-brand-success bg-brand-success/10"
+                  : "border-[var(--border-default)]"
+              }`}
+            >
+              {item.done && <Check className="h-3 w-3 text-brand-success" aria-hidden="true" />}
+            </div>
+            <span
+              className={`text-sm flex-1 ${
+                item.done ? "text-text-tertiary line-through" : "text-text-secondary"
+              }`}
+            >
+              {item.label}
+            </span>
+            {"href" in item && !item.done && (
+              <Link href={item.href as string}>
+                <button className="text-xs text-brand-primary hover:underline">
+                  Go →
+                </button>
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function CountUp({ target, duration = 1500 }: { target: number; duration?: number }) {
   const [count, setCount] = useState(0);
@@ -87,12 +174,15 @@ export default function DashboardPage() {
         {/* Page header */}
         <div>
           <h1 className="text-xl font-bold text-text-primary">
-            {greeting}, Najam 👋
+            {greeting} 👋
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Here&apos;s what&apos;s happening with TrustFlow
+            Here&apos;s what&apos;s happening with TrustFlow Demo
           </p>
         </div>
+
+        {/* Getting started checklist */}
+        <GettingStartedChecklist />
 
         {/* Stats */}
         <motion.div

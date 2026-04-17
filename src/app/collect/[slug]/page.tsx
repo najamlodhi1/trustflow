@@ -2,60 +2,64 @@
 
 import { useState, use } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Sparkles, ArrowRight, Upload } from "lucide-react";
+import { Check, ArrowRight, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { StarRating } from "@/components/ui/StarRating";
-import { scaleIn, staggerContainer, fadeUp } from "@/lib/animations";
+import { scaleIn } from "@/lib/animations";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
-type Step = 1 | 2 | 3 | 4 | 5;
-
-const PROMPTS = [
-  "What problem were you trying to solve before working with us?",
-  "What specific results did you achieve?",
-  "Would you recommend us, and why?",
-];
+type Step = "rating" | "testimonial" | "feedback" | "thanks";
 
 export default function CollectPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = use(params);
+  const { slug: _slug } = use(params);
 
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>("rating");
   const [rating, setRating] = useState(0);
-  const [text, setText] = useState("");
+  const [path, setPath] = useState<"happy" | "unhappy">("happy");
+
+  // Happy path fields
   const [name, setName] = useState("");
-  const [title, setTitle] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
-  const [email, setEmail] = useState("");
-  const [polishedText, setPolishedText] = useState<string | null>(null);
-  const [polishing, setPolishing] = useState(false);
-  const [usePolished, setUsePolished] = useState(false);
+  const [text, setText] = useState("");
+  const [consent, setConsent] = useState(true);
+
+  // Unhappy path fields
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackEmail, setFeedbackEmail] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
 
-  async function handlePolish() {
-    setPolishing(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setPolishing(false);
-    setPolishedText(
-      "Working with this team was truly transformative for our business. The expertise and dedication they brought to every interaction exceeded our highest expectations. The results we achieved in such a short time were nothing short of remarkable, and I would recommend them wholeheartedly to anyone looking for exceptional quality and real outcomes."
-    );
-    setStep(4);
+  function handleRating(star: number) {
+    setRating(star);
+    const isHappy = star >= 4;
+    setPath(isHappy ? "happy" : "unhappy");
+    setTimeout(() => setStep(isHappy ? "testimonial" : "feedback"), 500);
   }
 
-  async function handleSubmit() {
-    if (!name || !email || !text) return;
+  async function handleSubmitTestimonial() {
+    if (!name || text.length < 10) return;
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 1000));
     setSubmitting(false);
-    setStep(5);
+    setStep("thanks");
   }
 
-  const canProceedStep2 = text.length >= 20;
+  async function handleSubmitFeedback() {
+    if (!feedbackText) return;
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 800));
+    setSubmitting(false);
+    setStep("thanks");
+  }
+
+  // 0 = rating, 1 = form (testimonial/feedback)
+  const stepIndex = step === "rating" ? 0 : 1;
 
   return (
     <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-4">
@@ -68,27 +72,32 @@ export default function CollectPage({
         <p className="text-sm text-text-secondary mt-0.5">Share your experience with us</p>
       </div>
 
-      {/* Progress dots */}
-      {step < 5 && (
-        <div className="flex gap-2 mb-8">
-          {[1, 2, 3, 4].map((s) => (
+      {/* Progress indicator */}
+      {step !== "thanks" && (
+        <div className="flex items-center gap-2 mb-8" role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemin={1} aria-valuemax={2}>
+          {[0, 1].map((i) => (
             <div
-              key={s}
+              key={i}
               className={cn(
                 "h-2 rounded-full transition-all duration-300",
-                s === step ? "w-6 bg-brand-primary" : s < step ? "w-2 bg-indigo-500/60" : "w-2 bg-bg-overlay"
+                i === stepIndex
+                  ? "w-6 bg-brand-primary"
+                  : i < stepIndex
+                  ? "w-2 bg-indigo-500/60"
+                  : "w-2 bg-bg-overlay"
               )}
             />
           ))}
+          <span className="sr-only">Step {stepIndex + 1} of 2</span>
         </div>
       )}
 
       <div className="w-full max-w-lg">
         <AnimatePresence mode="wait">
           {/* Step 1: Rating */}
-          {step === 1 && (
+          {step === "rating" && (
             <motion.div
-              key="step1"
+              key="rating"
               variants={scaleIn}
               initial="hidden"
               animate="show"
@@ -96,7 +105,9 @@ export default function CollectPage({
               className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 text-center space-y-8"
             >
               <div>
-                <h2 className="text-xl font-bold text-text-primary">How would you rate your experience?</h2>
+                <h2 className="text-xl font-bold text-text-primary">
+                  How would you rate your experience?
+                </h2>
                 <p className="text-sm text-text-secondary mt-1">Tap a star to get started</p>
               </div>
 
@@ -106,17 +117,16 @@ export default function CollectPage({
                     key={star}
                     whileHover={{ scale: 1.2 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => {
-                      setRating(star);
-                      setTimeout(() => setStep(2), 300);
-                    }}
-                    className="text-4xl transition-all duration-150"
+                    onClick={() => handleRating(star)}
+                    className="text-4xl min-w-[48px] min-h-[48px] flex items-center justify-center transition-all duration-150"
                     aria-label={`Rate ${star} star${star !== 1 ? "s" : ""}`}
                   >
-                    <span className={cn(
-                      "transition-all duration-150",
-                      star <= rating ? "filter-none" : "grayscale opacity-40"
-                    )}>
+                    <span
+                      className={cn(
+                        "transition-all duration-150",
+                        star <= rating ? "filter-none" : "grayscale opacity-40"
+                      )}
+                    >
                       ⭐
                     </span>
                   </motion.button>
@@ -125,221 +135,183 @@ export default function CollectPage({
 
               {rating > 0 && (
                 <p className="text-sm text-text-secondary animate-pulse">
-                  {rating <= 2 ? "We're sorry to hear that..." : rating <= 3 ? "Thanks for your honest feedback!" : rating <= 4 ? "That's great!" : "Amazing! 🎉"}
+                  {rating <= 2
+                    ? "We're sorry to hear that..."
+                    : rating === 3
+                    ? "Thanks for your honest feedback!"
+                    : rating === 4
+                    ? "That's great! 😊"
+                    : "Amazing! 🎉"}
                 </p>
               )}
             </motion.div>
           )}
 
-          {/* Step 2: Write testimonial */}
-          {step === 2 && (
+          {/* Step 2a: Testimonial form — happy path (4–5 stars) */}
+          {step === "testimonial" && (
             <motion.div
-              key="step2"
+              key="testimonial"
               variants={scaleIn}
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-6"
+              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-5"
             >
-              <div>
+              <div className="text-center">
                 <div className="flex justify-center mb-2">
                   <StarRating value={rating} size="lg" readonly />
                 </div>
-                <h2 className="text-xl font-bold text-text-primary text-center">We&apos;d love to hear more!</h2>
-                <p className="text-sm text-text-secondary text-center mt-1">Here are some prompts to help:</p>
+                <h2 className="text-xl font-bold text-text-primary">
+                  We&apos;d love to share your experience!
+                </h2>
+                <p className="text-sm text-text-secondary mt-1">Fill in your details below</p>
               </div>
 
-              <ul className="space-y-2">
-                {PROMPTS.map((p, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                    <span className="text-brand-primary mt-0.5 flex-shrink-0">•</span>
-                    {p}
-                  </li>
-                ))}
-              </ul>
-
-              <Textarea
-                placeholder="Your testimonial..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={5}
-                charCount={{ current: text.length, max: 500 }}
+              <Input
+                label="Your name *"
+                placeholder="Sarah Johnson"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
               />
 
-              <div className="flex gap-3">
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  disabled={!canProceedStep2}
-                  onClick={() => setStep(3)}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
-                >
-                  Continue
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="md"
-                  leftIcon={<Sparkles className="h-4 w-4 text-indigo-400" />}
-                  onClick={handlePolish}
-                  disabled={!canProceedStep2}
-                >
-                  AI Enhance
-                </Button>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Job title (optional)"
+                  placeholder="CEO"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                />
+                <Input
+                  label="Company (optional)"
+                  placeholder="TechCorp"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                />
               </div>
-            </motion.div>
-          )}
 
-          {/* Step 3: Your details */}
-          {step === 3 && (
-            <motion.div
-              key="step3"
-              variants={scaleIn}
-              initial="hidden"
-              animate="show"
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-6"
-            >
               <div>
-                <h2 className="text-xl font-bold text-text-primary">Your details</h2>
-                <p className="text-sm text-text-secondary mt-1">Help readers know who this is from</p>
+                <Textarea
+                  label="Your testimonial *"
+                  placeholder="What did you enjoy most about working with us?"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={4}
+                  charCount={{ current: text.length, max: 500 }}
+                />
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-indigo-400" aria-hidden="true" />
+                  <span className="text-[11px] text-indigo-400 font-medium">
+                    ✨ AI Polish available after submission
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-text-tertiary">
+                  💡 Tip: Mention specific results or outcomes — it helps future customers!
+                </p>
               </div>
 
-              <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-4">
-                <motion.div variants={fadeUp}>
-                  <Input
-                    label="Your name"
-                    placeholder="Sarah Johnson"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </motion.div>
-                <motion.div variants={fadeUp} className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Job title (optional)"
-                    placeholder="CEO"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                  <Input
-                    label="Company (optional)"
-                    placeholder="TechCorp"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                  />
-                </motion.div>
-                <motion.div variants={fadeUp}>
-                  <Input
-                    type="email"
-                    label="Email (private, not displayed)"
-                    placeholder="you@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    helperText="Used to verify your submission only"
-                  />
-                </motion.div>
-                <motion.div variants={fadeUp}>
-                  <Button
-                    variant="secondary"
-                    size="md"
-                    leftIcon={<Upload className="h-4 w-4" />}
-                    className="w-full"
-                  >
-                    Upload photo (optional)
-                  </Button>
-                </motion.div>
-              </motion.div>
+              <Button
+                variant="secondary"
+                size="md"
+                leftIcon={<Upload className="h-4 w-4" aria-hidden="true" />}
+                className="w-full"
+              >
+                Upload photo (optional)
+              </Button>
+
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 accent-indigo-500 h-4 w-4 flex-shrink-0"
+                />
+                <span className="text-xs text-text-secondary leading-relaxed">
+                  I&apos;m happy for this to be displayed publicly
+                </span>
+              </label>
 
               <Button
                 variant="gradient"
                 size="lg"
                 className="w-full"
-                disabled={!name || !email}
+                disabled={!name || text.length < 10}
                 loading={submitting}
-                onClick={handleSubmit}
-                rightIcon={<ArrowRight className="h-4 w-4" />}
+                onClick={handleSubmitTestimonial}
+                rightIcon={<ArrowRight className="h-4 w-4" aria-hidden="true" />}
               >
                 Submit testimonial
               </Button>
+
+              <div className="pt-3 border-t border-[var(--border-subtle)] text-center space-y-2">
+                <p className="text-xs text-text-tertiary">Want to help us even more?</p>
+                <Button variant="secondary" size="sm">
+                  ⭐ Leave a Google Review
+                </Button>
+              </div>
             </motion.div>
           )}
 
-          {/* Step 4: AI Polish review */}
-          {step === 4 && (
+          {/* Step 2b: Private feedback form — unhappy path (1–3 stars) */}
+          {step === "feedback" && (
             <motion.div
-              key="step4"
+              key="feedback"
               variants={scaleIn}
               initial="hidden"
               animate="show"
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-6"
+              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-8 space-y-5"
             >
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="h-5 w-5 text-indigo-400" />
-                  <h2 className="text-xl font-bold text-text-primary">AI Enhanced version</h2>
+                <div className="flex justify-center mb-3">
+                  <StarRating value={rating} size="lg" readonly />
                 </div>
-                <p className="text-sm text-text-secondary">Review the polished version of your testimonial</p>
+                <h2 className="text-xl font-bold text-text-primary">
+                  We&apos;re sorry your experience wasn&apos;t great.
+                </h2>
+                <p className="text-sm text-text-secondary mt-2 leading-relaxed">
+                  Your feedback helps us improve. This is private and won&apos;t be published.
+                </p>
               </div>
 
-              {polishing ? (
-                <div className="py-8 text-center space-y-3">
-                  <div className="flex justify-center gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <span
-                        key={i}
-                        className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce"
-                        style={{ animationDelay: `${i * 0.15}s` }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-sm text-text-secondary">Enhancing your testimonial...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)] p-4">
-                    <p className="text-xs font-medium text-text-tertiary uppercase tracking-wide mb-2">Original</p>
-                    <p className="text-sm text-text-secondary leading-relaxed">&ldquo;{text}&rdquo;</p>
-                  </div>
-                  <div className="rounded-[var(--radius-md)] bg-indigo-500/5 border border-indigo-500/20 p-4">
-                    <p className="text-xs font-medium text-indigo-400 uppercase tracking-wide mb-2">Enhanced</p>
-                    <p className="text-sm text-text-primary leading-relaxed">&ldquo;{polishedText}&rdquo;</p>
-                  </div>
-                </div>
-              )}
+              <Textarea
+                label="What could we have done better? *"
+                placeholder="Tell us what went wrong or what we could improve..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                rows={4}
+              />
 
-              {!polishing && polishedText && (
-                <div className="flex gap-3">
-                  <Button
-                    variant="gradient"
-                    size="md"
-                    className="flex-1"
-                    onClick={() => { setUsePolished(true); setStep(3); }}
-                  >
-                    ✓ Use enhanced version
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="md"
-                    onClick={() => setStep(3)}
-                  >
-                    Keep my original
-                  </Button>
-                </div>
-              )}
+              <Input
+                type="email"
+                label="Your email (optional — if you'd like us to follow up)"
+                placeholder="you@company.com"
+                value={feedbackEmail}
+                onChange={(e) => setFeedbackEmail(e.target.value)}
+              />
+
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                disabled={!feedbackText}
+                loading={submitting}
+                onClick={handleSubmitFeedback}
+                rightIcon={<ArrowRight className="h-4 w-4" aria-hidden="true" />}
+              >
+                Send feedback
+              </Button>
             </motion.div>
           )}
 
-          {/* Step 5: Thank you */}
-          {step === 5 && (
+          {/* Step 3: Thank you */}
+          {step === "thanks" && (
             <motion.div
-              key="step5"
+              key="thanks"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", bounce: 0.4 }}
-              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-12 text-center space-y-5"
+              className="bg-bg-surface rounded-[var(--radius-xl)] border border-[var(--border-subtle)] p-12 text-center space-y-6"
             >
               <motion.div
                 initial={{ scale: 0 }}
@@ -347,34 +319,37 @@ export default function CollectPage({
                 transition={{ delay: 0.2, type: "spring", bounce: 0.5 }}
                 className="mx-auto h-16 w-16 rounded-full bg-brand-success/10 border-2 border-brand-success/30 flex items-center justify-center"
               >
-                <Check className="h-8 w-8 text-brand-success" />
+                <Check className="h-8 w-8 text-brand-success" aria-hidden="true" />
               </motion.div>
 
               <div>
                 <h2 className="text-2xl font-bold text-text-primary">
-                  Thank you{name ? `, ${name.split(" ")[0]}` : ""}!
+                  Thank you{name ? `, ${name.split(" ")[0]}` : ""}! 🎉
                 </h2>
                 <p className="text-sm text-text-secondary mt-2 leading-relaxed max-w-xs mx-auto">
-                  Your testimonial has been submitted and is awaiting approval. We really appreciate your feedback.
+                  {path === "happy"
+                    ? "Your testimonial has been received and is pending review. We really appreciate it!"
+                    : "Your feedback has been received. Thank you for helping us improve."}
                 </p>
               </div>
 
-              <div className="pt-2">
-                <p className="text-xs text-text-tertiary">Want to help us spread the word?</p>
-                <div className="flex justify-center gap-2 mt-3">
-                  <Button variant="secondary" size="sm">Share on Twitter</Button>
-                  <Button variant="ghost" size="sm">Close</Button>
-                </div>
-              </div>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => (window.location.href = "/")}
+              >
+                Return to TrustFlow Demo
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* TrustFlow badge */}
       <p className="mt-8 text-[10px] text-text-tertiary">
         Powered by{" "}
-        <a href="/" className="text-brand-primary hover:underline">TrustFlow</a>
+        <a href="/" className="text-brand-primary hover:underline">
+          TrustFlow
+        </a>
       </p>
     </div>
   );

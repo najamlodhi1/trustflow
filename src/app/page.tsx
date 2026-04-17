@@ -4,30 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import {
-  Zap, ArrowRight, Star, Check, ChevronDown, Play,
-  MessageSquare, RefreshCw, Layout, Sparkles, Shield,
-  BarChart2, Globe, Users,
+  Zap, ArrowRight, Check, ChevronDown, Play,
+  MessageSquare, Sparkles, BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { Avatar, AvatarGroup } from "@/components/ui/Avatar";
+import { Avatar } from "@/components/ui/Avatar";
 import { StarRating } from "@/components/ui/StarRating";
-import { staggerContainer, fadeUp, fadeIn, scaleIn, slideInLeft, slideInRight } from "@/lib/animations";
+import { staggerContainer, fadeUp, scaleIn, slideInLeft, slideInRight } from "@/lib/animations";
 import { cn } from "@/lib/utils";
-
-const TESTIMONIALS = [
-  { name: "Sarah Johnson", company: "TechCorp", rating: 5, text: "Working with TrustFlow was an absolute game-changer. Our conversion rate went up 34% in the first month." },
-  { name: "Mike Torres", company: "GrowthLabs", rating: 5, text: "The only social proof tool that actually converts. I&apos;ve tried everything else on the market." },
-  { name: "Anna Li", company: "Bloom Agency", rating: 5, text: "Beautiful widgets. Clients love seeing real reviews front and centre. Setup took less than 10 minutes." },
-  { name: "Chris Patel", company: "Launchpad SaaS", rating: 5, text: "The AI polish feature is incredible. It turns rough feedback into compelling testimonials instantly." },
-  { name: "Emma Wilson", company: "Willow & Co.", rating: 5, text: "As a small business owner I was sceptical. TrustFlow paid for itself in the first week." },
-  { name: "James Okafor", company: "BuildFast", rating: 5, text: "Integrating took 5 minutes. The widget looks gorgeous and the analytics are genuinely useful." },
-  { name: "Priya Mehta", company: "Clearwave", rating: 5, text: "We use TrustFlow on every landing page. It shortens our sales cycle noticeably." },
-  { name: "Tom Bradley", company: "Studio Hatch", rating: 4, text: "Clean design, powerful features. Our clients see real results from the widget embed." },
-];
-
-const LOGOS = ["Stripe", "Linear", "Vercel", "Notion", "Figma", "Loom", "Framer", "Supabase"];
 
 const AI_FEATURES = [
   { icon: <Sparkles className="h-5 w-5" />, title: "Smart Prompts", desc: "AI guides customers to write more compelling, specific testimonials." },
@@ -80,7 +66,7 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-6 text-sm text-text-secondary flex-1">
           <a href="#features" className="hover:text-text-primary transition-colors">Features</a>
           <a href="#pricing" className="hover:text-text-primary transition-colors">Pricing</a>
-          <a href="#testimonials" className="hover:text-text-primary transition-colors">Reviews</a>
+          <a href="#story" className="hover:text-text-primary transition-colors">Story</a>
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
@@ -99,7 +85,6 @@ function Navbar() {
 function HeroSection() {
   return (
     <section className="pt-32 pb-20 px-6 text-center relative overflow-hidden">
-      {/* Background glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
         <div className="h-[600px] w-[800px] rounded-full bg-indigo-500/8 blur-3xl" />
         <div className="absolute h-[400px] w-[600px] rounded-full bg-violet-500/6 blur-3xl translate-y-20" />
@@ -111,14 +96,12 @@ function HeroSection() {
         animate="show"
         className="relative max-w-4xl mx-auto space-y-8"
       >
-        {/* Badge */}
         <motion.div variants={fadeUp} className="flex justify-center">
           <Badge variant="indigo" className="px-4 py-1.5 text-sm">
-            ✦ Trusted by 500+ businesses
+            ✦ Now in public beta · Free plan available
           </Badge>
         </motion.div>
 
-        {/* Headline */}
         <motion.h1
           variants={fadeUp}
           className="font-display text-5xl md:text-7xl leading-tight text-text-primary"
@@ -128,12 +111,10 @@ function HeroSection() {
           {" "}Display everywhere.
         </motion.h1>
 
-        {/* Subheadline */}
         <motion.p variants={fadeUp} className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed">
           TrustFlow helps freelancers, founders, and agencies collect testimonials, import reviews from Google and Trustpilot, and display them on any website — in under 10 minutes.
         </motion.p>
 
-        {/* CTAs */}
         <motion.div variants={fadeUp} className="flex items-center justify-center gap-4 flex-wrap">
           <Link href="/login">
             <Button variant="gradient" size="lg" rightIcon={<ArrowRight className="h-4 w-4" />} className="shadow-[var(--shadow-glow)]">
@@ -147,21 +128,17 @@ function HeroSection() {
           </Link>
         </motion.div>
 
-        {/* Social proof strip */}
-        <motion.div variants={fadeUp} className="flex items-center justify-center gap-4 flex-wrap">
-          <AvatarGroup names={["Sarah J", "Mike T", "Anna L", "Chris P", "Emma W"]} size="sm" />
-          <div className="flex items-center gap-2">
-            <StarRating value={5} size="sm" readonly />
-            <span className="text-sm text-text-secondary">
-              Join <span className="text-text-primary font-medium">500+</span> freelancers, founders, and agencies
+        <motion.div variants={fadeUp} className="flex items-center justify-center gap-6 flex-wrap text-sm text-text-tertiary">
+          {["Free forever", "No credit card required", "Setup in 10 minutes"].map((item) => (
+            <span key={item} className="flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-brand-success flex-shrink-0" />
+              {item}
             </span>
-          </div>
+          ))}
         </motion.div>
 
-        {/* Hero dashboard visual */}
         <motion.div variants={scaleIn} className="relative mt-8">
           <div className="animate-float rounded-[var(--radius-xl)] border border-[var(--border-default)] bg-bg-surface shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden glow-primary max-w-3xl mx-auto">
-            {/* Fake browser chrome */}
             <div className="flex items-center gap-1.5 px-4 py-3 border-b border-[var(--border-subtle)] bg-bg-elevated">
               <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
@@ -170,7 +147,6 @@ function HeroSection() {
                 trustflow.app/dashboard
               </div>
             </div>
-            {/* Mini dashboard preview */}
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-4 gap-3">
                 {[
@@ -187,7 +163,7 @@ function HeroSection() {
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {["Sarah J.", "Mike T.", "Anna L."].slice(0, 2).map((name) => (
+                {["Sarah J.", "Mike T."].map((name) => (
                   <div key={name} className="rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)] p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Avatar name={name} size="sm" />
@@ -211,19 +187,28 @@ function HeroSection() {
   );
 }
 
-function LogoStrip() {
+function WorksWithSection() {
+  const platforms = ["WordPress", "Shopify", "Webflow", "Wix", "Framer", "Next.js", "HTML"];
+
   return (
-    <section className="py-12 overflow-hidden border-y border-[var(--border-subtle)]">
-      <p className="text-center text-xs text-text-tertiary mb-6 uppercase tracking-widest">Trusted by teams at</p>
-      <div className="flex animate-marquee whitespace-nowrap">
-        {[...LOGOS, ...LOGOS].map((logo, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center mx-10 text-text-tertiary font-semibold text-lg opacity-40 hover:opacity-60 transition-opacity"
-          >
-            {logo}
-          </span>
-        ))}
+    <section className="py-12 border-y border-[var(--border-subtle)] bg-bg-surface">
+      <div className="max-w-4xl mx-auto px-6">
+        <p className="text-center text-xs text-text-tertiary mb-6 uppercase tracking-widest font-medium">
+          Works with any website platform
+        </p>
+        <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-4">
+          {platforms.map((name) => (
+            <span
+              key={name}
+              className="text-sm font-medium text-text-tertiary/50 hover:text-text-tertiary/80 transition-colors select-none"
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+        <p className="text-center text-xs text-text-tertiary/50 mt-5">
+          One script tag. No framework lock-in.
+        </p>
       </div>
     </section>
   );
@@ -298,8 +283,8 @@ function CollectVisual() {
       <div className="text-center space-y-4">
         <p className="text-sm font-medium text-text-secondary">How would you rate your experience?</p>
         <div className="flex justify-center gap-2">
-          {[1,2,3,4,5].map((s) => (
-            <span key={s} className="text-3xl">{s <= 4 ? "⭐" : "⭐"}</span>
+          {[1, 2, 3, 4, 5].map((s) => (
+            <span key={s} className="text-3xl">⭐</span>
           ))}
         </div>
       </div>
@@ -330,7 +315,7 @@ function ImportVisual() {
             className="flex items-center justify-between px-3 py-2.5 rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)]"
           >
             <span className="text-sm text-text-secondary">{p}</span>
-            <Badge variant={i === 0 ? "success" : i === 1 ? "success" : "default"} dot>
+            <Badge variant={i < 2 ? "success" : "default"} dot>
               {i < 2 ? "Connected" : "Connect →"}
             </Badge>
           </motion.div>
@@ -399,7 +384,7 @@ function WidgetVisual() {
             <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[var(--border-default)] bg-bg-elevated">
               <StarRating value={5} size="sm" readonly />
               <span className="text-sm font-bold text-text-primary">4.9</span>
-              <span className="text-xs text-text-secondary">500+ reviews</span>
+              <span className="text-xs text-text-secondary">verified reviews</span>
             </div>
           </div>
         )}
@@ -462,6 +447,109 @@ function AISection() {
   );
 }
 
+function FounderSection() {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  const roadmap = [
+    { status: "done", label: "Testimonial collection + AI polish" },
+    { status: "done", label: "Widget builder with 8 styles" },
+    { status: "building", label: "Google & Trustpilot import" },
+    { status: "next", label: "Video testimonials" },
+  ];
+
+  return (
+    <section id="story" ref={ref} className="py-24 px-6 bg-bg-surface">
+      <div className="max-w-2xl mx-auto space-y-14">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate={inView ? "show" : "hidden"}
+          className="space-y-6"
+        >
+          <motion.div variants={fadeUp} className="text-center">
+            <Badge variant="purple" className="mb-4">Built in public</Badge>
+            <h2 className="font-display text-4xl text-text-primary">
+              Built by a developer who needed this
+            </h2>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-bg-elevated p-8 space-y-6"
+          >
+            <blockquote className="text-text-secondary leading-relaxed text-base italic border-l-2 border-brand-primary pl-5">
+              &ldquo;I was paying for 3 separate tools — one for testimonials, one for Google reviews,
+              one for social proof popups. TrustFlow combines all of them for £12/month.&rdquo;
+            </blockquote>
+
+            <div className="flex items-center gap-3">
+              <Avatar name="Najam Khan" size="md" />
+              <div>
+                <p className="text-sm font-semibold text-text-primary">Najam Khan</p>
+                <p className="text-xs text-text-tertiary">Founder &amp; Developer</p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[var(--border-subtle)]">
+              <p className="text-sm text-text-secondary mb-4">
+                Currently in public beta. Be one of the first to try it.
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                <Link href="/login">
+                  <Button variant="gradient" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>
+                    Start free
+                  </Button>
+                </Link>
+                <Button variant="secondary" size="sm" onClick={() => {}}>
+                  Follow the journey on Twitter →
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate={inView ? "show" : "hidden"}
+          className="space-y-5"
+        >
+          <motion.h3 variants={fadeUp} className="font-display text-2xl text-text-primary text-center">
+            What&apos;s coming
+          </motion.h3>
+
+          <motion.ul
+            variants={staggerContainer}
+            initial="hidden"
+            animate={inView ? "show" : "hidden"}
+            className="space-y-3"
+          >
+            {roadmap.map((item, i) => (
+              <motion.li
+                key={i}
+                variants={fadeUp}
+                className="flex items-center gap-3 p-4 rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)]"
+              >
+                <span className="text-lg flex-shrink-0">
+                  {item.status === "done" ? "✅" : item.status === "building" ? "🔄" : "🔜"}
+                </span>
+                <span className="text-sm text-text-secondary flex-1">{item.label}</span>
+                <Badge
+                  variant={item.status === "done" ? "success" : item.status === "building" ? "warning" : "default"}
+                  className="text-[10px] flex-shrink-0"
+                >
+                  {item.status === "done" ? "Shipped" : item.status === "building" ? "Building now" : "Next"}
+                </Badge>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function PricingSection() {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const ref = useRef(null);
@@ -493,7 +581,11 @@ function PricingSection() {
                 )}
               >
                 {b.charAt(0).toUpperCase() + b.slice(1)}
-                {b === "yearly" && <span className="ml-1 text-[10px] text-brand-success font-bold">-25%</span>}
+                {b === "yearly" && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-brand-success/20 text-brand-success text-[10px] font-bold">
+                    Save 25%
+                  </span>
+                )}
               </button>
             ))}
           </motion.div>
@@ -554,56 +646,10 @@ function PricingSection() {
             );
           })}
         </motion.div>
-      </div>
-    </section>
-  );
-}
 
-function TestimonialsSection() {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-
-  return (
-    <section id="testimonials" ref={ref} className="py-24 px-6 bg-bg-surface overflow-hidden">
-      <div className="max-w-6xl mx-auto">
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate={inView ? "show" : "hidden"}
-          className="text-center mb-14"
-        >
-          <motion.h2 variants={fadeUp} className="font-display text-4xl text-text-primary">
-            Loved by businesses worldwide
-          </motion.h2>
-          <motion.p variants={fadeUp} className="text-text-secondary mt-3">
-            Real testimonials from real customers. No actors were harmed.
-          </motion.p>
-        </motion.div>
-
-        <motion.div
-          className="columns-1 md:columns-2 lg:columns-3 gap-5 space-y-5"
-          variants={staggerContainer}
-          initial="hidden"
-          animate={inView ? "show" : "hidden"}
-        >
-          {TESTIMONIALS.map((t) => (
-            <motion.div
-              key={t.name}
-              variants={fadeUp}
-              className="break-inside-avoid rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-bg-elevated p-5 space-y-3"
-            >
-              <StarRating value={t.rating} size="sm" readonly />
-              <p className="text-sm text-text-secondary leading-relaxed">&ldquo;{t.text}&rdquo;</p>
-              <div className="flex items-center gap-2.5">
-                <Avatar name={t.name} size="sm" />
-                <div>
-                  <p className="text-xs font-medium text-text-primary">{t.name}</p>
-                  <p className="text-[10px] text-text-tertiary">{t.company}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+        <p className="text-center text-xs text-text-tertiary mt-8">
+          14-day free trial on paid plans · No credit card required · Cancel anytime · Prices in GBP
+        </p>
       </div>
     </section>
   );
@@ -659,7 +705,7 @@ function Footer() {
   return (
     <footer className="border-t border-[var(--border-subtle)] py-12 px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="grid md:grid-cols-4 gap-8 mb-10">
+        <div className="grid md:grid-cols-[2fr_1fr_1fr] gap-8 mb-10">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="h-7 w-7 rounded-[var(--radius-md)] bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
@@ -667,32 +713,63 @@ function Footer() {
               </div>
               <span className="font-semibold text-text-primary">TrustFlow</span>
             </div>
-            <p className="text-xs text-text-tertiary leading-relaxed">
-              The social proof platform for modern businesses.
+            <p className="text-xs text-text-tertiary leading-relaxed max-w-xs">
+              The affordable social proof platform for freelancers, founders, and agencies.
+              Currently in public beta.
             </p>
-          </div>
-          {[
-            { title: "Product", links: ["Features", "Pricing", "Changelog", "Roadmap"] },
-            { title: "Company", links: ["About", "Blog", "Careers", "Press"] },
-            { title: "Legal", links: ["Privacy", "Terms", "Cookies", "Security"] },
-          ].map((col) => (
-            <div key={col.title}>
-              <p className="text-xs font-semibold text-text-primary uppercase tracking-wide mb-3">{col.title}</p>
-              <ul className="space-y-2">
-                {col.links.map((l) => (
-                  <li key={l}>
-                    <a href="#" className="text-xs text-text-tertiary hover:text-text-secondary transition-colors">
-                      {l}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+            <div className="flex items-center gap-4 mt-4">
+              <a
+                href="https://twitter.com/najamkhan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                Twitter / X
+              </a>
+              <a
+                href="https://github.com/najamkhan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                GitHub
+              </a>
             </div>
-          ))}
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-text-primary uppercase tracking-wide mb-3">Product</p>
+            <ul className="space-y-2">
+              {[
+                { label: "Features", href: "#features" },
+                { label: "Pricing", href: "#pricing" },
+              ].map((l) => (
+                <li key={l.label}>
+                  <a href={l.href} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-text-primary uppercase tracking-wide mb-3">Legal</p>
+            <ul className="space-y-2">
+              {["Privacy Policy", "Terms of Service"].map((l) => (
+                <li key={l}>
+                  <a href="#" className="text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                    {l}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
+
         <div className="border-t border-[var(--border-subtle)] pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-text-tertiary">© 2025 TrustFlow. All rights reserved.</p>
-          <p className="text-xs text-text-tertiary">Made with ♥ in the UK</p>
+          <p className="text-xs text-text-tertiary">© 2026 TrustFlow. All rights reserved.</p>
+          <p className="text-xs text-text-tertiary">Built with ♥ in London</p>
         </div>
       </div>
     </footer>
@@ -705,7 +782,7 @@ export default function LandingPage() {
       <Navbar />
       <main id="main-content">
         <HeroSection />
-        <LogoStrip />
+        <WorksWithSection />
         <FeatureSection
           id="features"
           badge="Collect"
@@ -745,11 +822,10 @@ export default function LandingPage() {
           visual={<WidgetVisual />}
         />
         <AISection />
-        <TestimonialsSection />
+        <FounderSection />
         <PricingSection />
         <FAQSection />
 
-        {/* CTA Section */}
         <section className="py-24 px-6 text-center relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
             <div className="h-96 w-96 rounded-full bg-indigo-500/8 blur-3xl" />
@@ -759,7 +835,7 @@ export default function LandingPage() {
               Ready to build trust?
             </h2>
             <p className="text-text-secondary">
-              Join 500+ businesses. Set up in under 10 minutes. No credit card required.
+              Start free, no credit card required. Set up in under 10 minutes.
             </p>
             <Link href="/login">
               <Button variant="gradient" size="lg" className="shadow-[var(--shadow-glow)]" rightIcon={<ArrowRight className="h-4 w-4" />}>

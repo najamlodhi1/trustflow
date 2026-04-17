@@ -136,10 +136,10 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             </div>
 
             <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-[var(--radius-md)] hover:bg-bg-overlay transition-colors cursor-pointer group">
-              <Avatar name="Najam Lodhi" size="sm" />
+              <Avatar name="Demo User" size="sm" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-text-primary truncate">Najam Lodhi</p>
-                <p className="text-[10px] text-text-tertiary truncate">najamlodhi1@gmail.com</p>
+                <p className="text-xs font-medium text-text-primary truncate">Demo User</p>
+                <p className="text-[10px] text-text-tertiary truncate">demo@trustflow.app</p>
               </div>
               <button
                 aria-label="Sign out"
@@ -155,7 +155,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             <Link href="/dashboard/billing" title="Billing">
               <CreditCard className="h-4 w-4 text-text-tertiary" />
             </Link>
-            <Avatar name="Najam Lodhi" size="sm" />
+            <Avatar name="Demo User" size="sm" />
           </div>
         )}
       </div>
