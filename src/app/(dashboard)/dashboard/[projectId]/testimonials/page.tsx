@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useMemo } from "react";
+import {
+  useReactTable, getCoreRowModel, getSortedRowModel,
+  getPaginationRowModel, type SortingState, type ColumnDef,
+} from "@tanstack/react-table";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Download, Search, MoreHorizontal, Check, X,
   Star as StarIcon, Sparkles, ChevronDown, MessageSquare,
-  Copy, RotateCcw,
+  Copy, RotateCcw, ArrowUpDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge, statusBadgeVariant } from "@/components/ui/Badge";
@@ -17,7 +21,7 @@ import { TestimonialCardSkeleton } from "@/components/ui/Skeleton";
 import { Header } from "@/components/layout/Header";
 import { staggerContainer, fadeUp } from "@/lib/animations";
 import { timeAgo, cn, copyToClipboard } from "@/lib/utils";
-import { SEED_TESTIMONIALS } from "@/lib/constants";
+import { useStore, type Testimonial } from "@/lib/store";
 import { toast } from "sonner";
 
 type Tab = "all" | "pending" | "approved" | "rejected";
@@ -38,11 +42,6 @@ const SENTIMENT_META = {
 };
 
 type SentimentLabel = "positive" | "neutral" | "negative";
-type Testimonial = Omit<typeof SEED_TESTIMONIALS[number], "status" | "featured" | "sentimentLabel"> & {
-  status: string;
-  featured: boolean;
-  sentimentLabel?: SentimentLabel;
-};
 
 // ── AI Response panel ─────────────────────────────────────────────────────────
 
@@ -267,7 +266,7 @@ function TestimonialCard({
           {t.aiTopics?.map((tag) => (
             <Badge key={tag} variant="default" className="text-[10px]">{tag}</Badge>
           ))}
-          <span className="text-[10px] text-text-tertiary ml-auto">{timeAgo(new Date(t.createdAt))}</span>
+          <span className="text-[10px] text-text-tertiary ml-auto">{timeAgo(new Date(t.date))}</span>
         </div>
 
         {/* Action row */}
@@ -306,16 +305,16 @@ export default function TestimonialsPage({ params }: { params: Promise<{ project
   const { projectId } = use(params);
   void projectId;
 
+  const { testimonials, updateTestimonialStatus, toggleFeatured } = useStore();
+
   const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(
-    SEED_TESTIMONIALS.map((t) => ({ ...t })) as unknown as Testimonial[]
-  );
   const [aiResponseFor, setAiResponseFor] = useState<Testimonial | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const loading = false;
 
   const counts = {
@@ -325,22 +324,51 @@ export default function TestimonialsPage({ params }: { params: Promise<{ project
     rejected: testimonials.filter((t) => t.status === "rejected").length,
   };
 
-  const filtered = testimonials.filter((t) => {
+  const preFiltered = useMemo(() => testimonials.filter((t) => {
     if (tab !== "all" && t.status !== tab) return false;
     if (sentimentFilter !== "all" && t.sentimentLabel !== sentimentFilter) return false;
     if (sourceFilter !== "all" && t.source !== sourceFilter) return false;
     if (search && !t.text.toLowerCase().includes(search.toLowerCase()) && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
+  }), [testimonials, tab, sentimentFilter, sourceFilter, search]);
+
+  const columns = useMemo<ColumnDef<Testimonial>[]>(() => [
+    { accessorKey: "rating",       enableSorting: true },
+    { accessorKey: "date",         enableSorting: true },
+    { accessorKey: "sentimentScore", enableSorting: true },
+    { accessorKey: "name",         enableSorting: true },
+  ], []);
+
+  const table = useReactTable({
+    data: preFiltered,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
   });
 
-  function updateStatus(id: string, status: string) {
-    setTestimonials((prev) => prev.map((t) => t.id === id ? { ...t, status } : t));
+  const filtered = table.getRowModel().rows.map((r) => r.original);
+
+  const SORT_OPTIONS = [
+    { label: "Newest first",      id: "date-desc",           col: "date",          desc: true  },
+    { label: "Oldest first",      id: "date-asc",            col: "date",          desc: false },
+    { label: "Highest rating",    id: "rating-desc",         col: "rating",        desc: true  },
+    { label: "Lowest rating",     id: "rating-asc",          col: "rating",        desc: false },
+    { label: "Best sentiment",    id: "sentiment-desc",      col: "sentimentScore", desc: true  },
+  ];
+  const activeSortId = sorting.length ? `${sorting[0].id}-${sorting[0].desc ? "desc" : "asc"}` : "date-desc";
+
+  function updateStatus(id: string, status: "pending" | "approved" | "rejected") {
+    updateTestimonialStatus(id, status);
     toast.success(`Testimonial ${status}`);
   }
 
   function toggleFeature(id: string) {
     const was = testimonials.find((t) => t.id === id)?.featured;
-    setTestimonials((prev) => prev.map((t) => t.id === id ? { ...t, featured: !t.featured } : t));
+    toggleFeatured(id);
     toast.success(was ? "Removed from featured" : "Marked as featured ⭐");
   }
 
@@ -391,10 +419,24 @@ export default function TestimonialsPage({ params }: { params: Promise<{ project
           ))}
         </div>
 
-        {/* Search + filters */}
+        {/* Search + filters + sort */}
         <div className="flex gap-3 flex-wrap">
           <div className="flex-1 min-w-48">
             <Input placeholder="Search testimonials..." value={search} onChange={(e) => setSearch(e.target.value)} leftIcon={<Search className="h-4 w-4" />} />
+          </div>
+          {/* Sort dropdown */}
+          <div className="relative">
+            <select
+              value={activeSortId}
+              onChange={(e) => {
+                const opt = SORT_OPTIONS.find((o) => o.id === e.target.value);
+                if (opt) setSorting([{ id: opt.col, desc: opt.desc }]);
+              }}
+              className="h-10 pl-8 pr-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-bg-surface text-xs text-text-secondary appearance-none cursor-pointer hover:border-[var(--border-default)] transition-colors"
+            >
+              {SORT_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <ArrowUpDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary pointer-events-none" />
           </div>
           <Button
             variant={filterOpen || activeFilters > 0 ? "primary" : "secondary"}
@@ -484,20 +526,61 @@ export default function TestimonialsPage({ params }: { params: Promise<{ project
             action={{ label: "Clear filters", onClick: () => { setTab("all"); setSentimentFilter("all"); setSourceFilter("all"); setSearch(""); } }}
           />
         ) : (
-          <motion.div className="space-y-4" variants={staggerContainer} initial="hidden" animate="show">
-            {filtered.map((t) => (
-              <TestimonialCard
-                key={t.id}
-                t={t}
-                selected={selected.has(t.id)}
-                onSelect={() => toggleSelect(t.id)}
-                onApprove={() => updateStatus(t.id, "approved")}
-                onReject={() => updateStatus(t.id, "rejected")}
-                onFeature={() => toggleFeature(t.id)}
-                onAIResponse={() => setAiResponseFor(t)}
-              />
-            ))}
-          </motion.div>
+          <>
+            <motion.div className="space-y-4" variants={staggerContainer} initial="hidden" animate="show">
+              {filtered.map((t) => (
+                <TestimonialCard
+                  key={t.id}
+                  t={t}
+                  selected={selected.has(t.id)}
+                  onSelect={() => toggleSelect(t.id)}
+                  onApprove={() => updateStatus(t.id, "approved")}
+                  onReject={() => updateStatus(t.id, "rejected")}
+                  onFeature={() => toggleFeature(t.id)}
+                  onAIResponse={() => setAiResponseFor(t)}
+                />
+              ))}
+            </motion.div>
+
+            {/* Pagination */}
+            {table.getPageCount() > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-text-tertiary">
+                  Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()} · {preFiltered.length} results
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                    className="h-8 w-8 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-text-tertiary hover:text-text-primary hover:border-[var(--border-default)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: Math.min(table.getPageCount(), 5) }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => table.setPageIndex(i)}
+                      className={cn(
+                        "h-8 w-8 flex items-center justify-center rounded-[var(--radius-md)] border text-xs font-medium transition-all",
+                        table.getState().pagination.pageIndex === i
+                          ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
+                          : "border-[var(--border-subtle)] text-text-tertiary hover:border-[var(--border-default)]"
+                      )}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                    className="h-8 w-8 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border-subtle)] text-text-tertiary hover:text-text-primary hover:border-[var(--border-default)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -511,7 +594,7 @@ export default function TestimonialsPage({ params }: { params: Promise<{ project
             <div className="flex items-center gap-3 bg-bg-elevated border border-[var(--border-default)] rounded-full px-5 py-2.5 shadow-[var(--shadow-md)]">
               <span className="text-sm font-medium text-text-primary">{selected.size} selected</span>
               <div className="w-px h-4 bg-[var(--border-subtle)]" />
-              <Button variant="primary" size="sm" className="rounded-full h-7 text-xs" onClick={() => { selected.forEach((id) => updateStatus(id, "approved")); setSelected(new Set()); }}>
+              <Button variant="primary" size="sm" className="rounded-full h-7 text-xs" onClick={() => { selected.forEach((id) => updateStatus(id, "approved")); setSelected(new Set()); toast.success(`${selected.size} approved`); }}>
                 Approve all
               </Button>
               <Button variant="ghost" size="sm" className="rounded-full h-7 text-xs" onClick={() => setSelected(new Set())}>

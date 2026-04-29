@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Header } from "@/components/layout/Header";
 import { staggerContainer, fadeUp } from "@/lib/animations";
 import { cn, copyToClipboard, timeAgo } from "@/lib/utils";
-import { SEED_AI_SUGGESTIONS } from "@/lib/constants";
+import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 type SuggestionType = "all" | "landing_section" | "hero_quote" | "social_snippet";
@@ -198,28 +198,26 @@ export default function SuggestionsPage({ params }: { params: Promise<{ projectI
   const { projectId } = use(params);
   void projectId;
 
+  const { suggestions: allSuggestions, acceptSuggestion, rejectSuggestion } = useStore();
+
   const [tab, setTab] = useState<SuggestionType>("all");
-  const [statuses, setStatuses] = useState<Record<string, SuggestionStatus>>(
-    () => Object.fromEntries(SEED_AI_SUGGESTIONS.map((s) => [s.id, s.status as SuggestionStatus]))
-  );
 
   function accept(id: string) {
-    setStatuses((p) => ({ ...p, [id]: "accepted" }));
+    acceptSuggestion(id);
     toast.success("Suggestion applied! You can now copy or assign it to a widget.");
   }
 
   function reject(id: string) {
-    setStatuses((p) => ({ ...p, [id]: statuses[id] === "accepted" ? "pending" : "rejected" }));
-    if (statuses[id] === "rejected") toast.success("Suggestion restored");
+    const current = allSuggestions.find((s) => s.id === id);
+    rejectSuggestion(id);
+    if (current?.status === "rejected") toast.success("Suggestion restored");
     else toast.success("Suggestion rejected — we'll learn from this");
   }
 
-  const suggestions = (SEED_AI_SUGGESTIONS as unknown as Suggestion[])
-    .filter((s) => tab === "all" || s.type === tab)
-    .map((s) => ({ ...s, status: statuses[s.id] ?? s.status }));
+  const suggestions = allSuggestions.filter((s) => tab === "all" || s.type === tab);
 
-  const pendingCount = Object.values(statuses).filter((s) => s === "pending").length;
-  const acceptedCount = Object.values(statuses).filter((s) => s === "accepted").length;
+  const pendingCount  = allSuggestions.filter((s) => s.status === "pending").length;
+  const acceptedCount = allSuggestions.filter((s) => s.status === "accepted").length;
 
   return (
     <div>
@@ -249,7 +247,7 @@ export default function SuggestionsPage({ params }: { params: Promise<{ projectI
           {[
             { label: "Pending", count: pendingCount, color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
             { label: "Applied", count: acceptedCount, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-            { label: "Rejected", count: Object.values(statuses).filter((s) => s === "rejected").length, color: "text-text-tertiary bg-bg-elevated border-[var(--border-subtle)]" },
+            { label: "Rejected", count: allSuggestions.filter((s) => s.status === "rejected").length, color: "text-text-tertiary bg-bg-elevated border-[var(--border-subtle)]" },
           ].map((pill) => (
             <div key={pill.label} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium", pill.color)}>
               <span>{pill.count}</span>
@@ -261,7 +259,7 @@ export default function SuggestionsPage({ params }: { params: Promise<{ projectI
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-[var(--border-subtle)] overflow-x-auto">
           {TABS.map((t) => {
-            const count = SEED_AI_SUGGESTIONS.filter((s) => t.id === "all" || s.type === t.id).length;
+            const count = allSuggestions.filter((s) => t.id === "all" || s.type === t.id).length;
             return (
               <button
                 key={t.id}

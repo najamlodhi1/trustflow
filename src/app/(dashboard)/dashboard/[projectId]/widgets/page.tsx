@@ -1,11 +1,20 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates,
+  useSortable, rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Monitor, Tablet, Smartphone, Copy, Check, ExternalLink,
   Sun, Moon, ChevronDown, ChevronLeft, ChevronRight,
-  Plus, Eye, EyeOff, Sparkles, ArrowRight, X,
+  Plus, Eye, EyeOff, Sparkles, ArrowRight, X, GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -15,7 +24,8 @@ import { StarRating } from "@/components/ui/StarRating";
 import { Avatar } from "@/components/ui/Avatar";
 import { Header } from "@/components/layout/Header";
 import { cn, copyToClipboard, timeAgo } from "@/lib/utils";
-import { WIDGET_TYPES, SEED_TESTIMONIALS, SEED_WIDGETS, SEED_AI_SUGGESTIONS } from "@/lib/constants";
+import { WIDGET_TYPES, SEED_TESTIMONIALS, SEED_WIDGETS } from "@/lib/constants";
+import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import { staggerContainer, fadeUp } from "@/lib/animations";
 
@@ -198,7 +208,8 @@ function EmbedModal({ open, onClose, widgetId }: { open: boolean; onClose: () =>
 // ── AI Suggestion panel (inside builder) ──────────────────────────────────
 
 function AISuggestionPanel({ onApply }: { onApply: (headline: string) => void }) {
-  const suggestions = SEED_AI_SUGGESTIONS.slice(0, 2);
+  const { suggestions: allSuggestions, acceptSuggestion } = useStore();
+  const suggestions = allSuggestions.slice(0, 2);
   const [applied, setApplied] = useState<Set<string>>(new Set());
 
   return (
@@ -224,7 +235,7 @@ function AISuggestionPanel({ onApply }: { onApply: (headline: string) => void })
             ) : (
               <button
                 className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium flex-shrink-0"
-                onClick={() => { setApplied((p) => new Set([...p, s.id])); onApply(s.headline); toast.success("AI suggestion applied to widget!"); }}
+                onClick={() => { setApplied((p) => new Set([...p, s.id])); acceptSuggestion(s.id); onApply(s.headline); toast.success("AI suggestion applied to widget!"); }}
               >
                 Apply →
               </button>
@@ -256,6 +267,8 @@ function WidgetGalleryCard({
   onEdit: () => void;
   onTogglePublish: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 10 : undefined };
   const [published, setPublished] = useState(widget.published);
 
   const typeLabel: Record<string, string> = {
@@ -263,7 +276,14 @@ function WidgetGalleryCard({
   };
 
   return (
-    <motion.div variants={fadeUp} className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-bg-surface overflow-hidden hover:border-[var(--border-default)] transition-all group">
+    <motion.div ref={setNodeRef} style={style} variants={fadeUp}
+      className={cn("rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-bg-surface overflow-hidden hover:border-[var(--border-default)] transition-all group", isDragging && "opacity-50 shadow-xl")}>
+      {/* Drag handle */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-0">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-tertiary hover:text-text-secondary transition-colors touch-none">
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </div>
       {/* Mini preview */}
       <div className="bg-[#111113] p-4 border-b border-[var(--border-subtle)] aspect-video flex items-center justify-center relative">
         <div className="scale-75 w-full">
@@ -334,6 +354,23 @@ export default function WidgetsPage({ params }: { params: Promise<{ projectId: s
   const { projectId } = use(params);
   void projectId;
 
+  const [widgets, setWidgets] = useState(() => [...SEED_WIDGETS]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setWidgets((items) => {
+        const oldIndex = items.findIndex((w) => w.id === active.id);
+        const newIndex = items.findIndex((w) => w.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  }
+
   const [view, setView] = useState<View>("gallery");
   const [device, setDevice] = useState<DeviceType>("desktop");
   const [previewDark, setPreviewDark] = useState(true);
@@ -368,25 +405,29 @@ export default function WidgetsPage({ params }: { params: Promise<{ projectId: s
           }
         />
         <div className="p-6 max-w-screen-xl mx-auto space-y-6">
-          <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" variants={staggerContainer} initial="hidden" animate="show">
-            {SEED_WIDGETS.map((w) => (
-              <WidgetGalleryCard
-                key={w.id}
-                widget={w}
-                onEdit={() => { setConfig((c) => ({ ...c, name: w.name, type: w.type })); setView("builder"); }}
-                onTogglePublish={() => {}}
-              />
-            ))}
-            {/* New widget placeholder */}
-            <motion.button
-              variants={fadeUp}
-              onClick={() => setView("builder")}
-              className="rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--border-subtle)] hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all flex flex-col items-center justify-center gap-3 p-8 text-text-tertiary hover:text-indigo-400 aspect-[4/3]"
-            >
-              <Plus className="h-8 w-8" />
-              <span className="text-sm font-medium">New widget</span>
-            </motion.button>
-          </motion.div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
+              <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" variants={staggerContainer} initial="hidden" animate="show">
+                {widgets.map((w) => (
+                  <WidgetGalleryCard
+                    key={w.id}
+                    widget={w}
+                    onEdit={() => { setConfig((c) => ({ ...c, name: w.name, type: w.type })); setView("builder"); }}
+                    onTogglePublish={() => {}}
+                  />
+                ))}
+                {/* New widget placeholder */}
+                <motion.button
+                  variants={fadeUp}
+                  onClick={() => setView("builder")}
+                  className="rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--border-subtle)] hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-all flex flex-col items-center justify-center gap-3 p-8 text-text-tertiary hover:text-indigo-400 aspect-[4/3]"
+                >
+                  <Plus className="h-8 w-8" />
+                  <span className="text-sm font-medium">New widget</span>
+                </motion.button>
+              </motion.div>
+            </SortableContext>
+          </DndContext>
         </div>
       </div>
     );

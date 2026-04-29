@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, use } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Upload, Send, Check, X, Sparkles, ChevronDown,
-  RefreshCw, Users, Mail, Link2, Info,
+  RefreshCw, Users, Mail, Link2, Info, CalendarIcon,
 } from "lucide-react";
+import { DayPicker } from "react-day-picker";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { Badge, statusBadgeVariant } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -15,17 +20,19 @@ import { Card } from "@/components/ui/Card";
 import { staggerContainer, fadeUp } from "@/lib/animations";
 import { timeAgo, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SEED_CAMPAIGNS } from "@/lib/constants";
+import { useStore } from "@/lib/store";
+import type { Campaign } from "@/lib/store";
 
 type Channel = "Email" | "Link" | "SMS";
 type Step = "compose" | "drafts" | "schedule";
+type SendMode = "now" | "scheduled";
 
 const SEGMENTS = [
-  { id: "all", label: "All customers", count: 24 },
-  { id: "enterprise", label: "Enterprise", count: 8 },
-  { id: "startup", label: "Startups", count: 10 },
-  { id: "power-user", label: "Power users", count: 6 },
-  { id: "agency", label: "Agencies", count: 4 },
+  { id: "all",         label: "All customers", count: 24 },
+  { id: "enterprise",  label: "Enterprise",    count: 8  },
+  { id: "startup",     label: "Startups",      count: 10 },
+  { id: "power-user",  label: "Power users",   count: 6  },
+  { id: "agency",      label: "Agencies",      count: 4  },
 ];
 
 const AI_DRAFTS = [
@@ -76,10 +83,18 @@ The TrustFlow Team`,
   },
 ];
 
-function CampaignRow({ c }: { c: typeof SEED_CAMPAIGNS[number] }) {
+const composeSchema = z.object({
+  name:      z.string().min(1, "Campaign name is required"),
+  segment:   z.string().min(1),
+  channel:   z.enum(["Email", "Link", "SMS"]),
+  aiContext: z.string().optional(),
+});
+type ComposeForm = z.infer<typeof composeSchema>;
+
+function CampaignRow({ c }: { c: Campaign }) {
   const [expanded, setExpanded] = useState(false);
   const statusColor: Record<string, string> = {
-    sent: "warning", draft: "default", completed: "success"
+    active: "warning", draft: "default", completed: "success",
   };
 
   return (
@@ -96,8 +111,7 @@ function CampaignRow({ c }: { c: typeof SEED_CAMPAIGNS[number] }) {
             </Badge>
           </div>
           <p className="text-xs text-text-tertiary mt-0.5">
-            {c.channel} · {c.segment} segment
-            {c.sentAt && ` · Sent ${timeAgo(c.sentAt)}`}
+            {timeAgo(new Date(c.createdAt))}
           </p>
         </div>
         <div className="flex items-center gap-6 flex-shrink-0 text-center">
@@ -131,10 +145,10 @@ function CampaignRow({ c }: { c: typeof SEED_CAMPAIGNS[number] }) {
                     <p className="text-xs font-medium text-text-primary">{cu.name}</p>
                     <p className="text-[10px] text-text-tertiary">{cu.email}</p>
                   </div>
-                  <Badge variant={statusBadgeVariant(cu.status)} dot className="text-[10px]">
-                    {cu.status.charAt(0).toUpperCase() + cu.status.slice(1)}
+                  <Badge variant={statusBadgeVariant(cu.responded ? "approved" : "pending")} dot className="text-[10px]">
+                    {cu.responded ? "Responded" : "Pending"}
                   </Badge>
-                  {cu.status !== "completed" && (
+                  {!cu.responded && (
                     <Button variant="ghost" size="sm" className="h-7 text-xs" leftIcon={<RefreshCw className="h-3 w-3" />}
                       onClick={() => toast.success(`Request resent to ${cu.name}`)}>
                       Resend
@@ -154,34 +168,65 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
   const { projectId } = use(params);
   void projectId;
 
+  const { campaigns, addCampaign } = useStore();
+
   const [step, setStep] = useState<Step>("compose");
-  const [name, setName] = useState("");
-  const [segment, setSegment] = useState("all");
-  const [channel, setChannel] = useState<Channel>("Email");
-  const [aiContext, setAiContext] = useState("");
   const [generating, setGenerating] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendMode, setSendMode] = useState<SendMode>("now");
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
-  async function generateDrafts() {
-    if (!name) { toast.error("Give your campaign a name first"); return; }
+  const { control, handleSubmit, watch, reset, formState: { errors } } = useForm<ComposeForm>({
+    resolver: zodResolver(composeSchema),
+    defaultValues: { name: "", segment: "all", channel: "Email", aiContext: "" },
+  });
+
+  const watchedName    = watch("name");
+  const watchedSegment = watch("segment");
+  const watchedChannel = watch("channel");
+
+  async function onComposeSubmit() {
     setGenerating(true);
     await new Promise((r) => setTimeout(r, 2200));
     setGenerating(false);
     setStep("drafts");
   }
 
-  async function handleSend() {
+  async function handleSend(data: ComposeForm) {
     if (!selectedDraft) { toast.error("Select a draft first"); return; }
+    if (sendMode === "scheduled" && !scheduledDate) { toast.error("Pick a scheduled date"); return; }
     setSending(true);
     await new Promise((r) => setTimeout(r, 1500));
     setSending(false);
-    toast.success(`Campaign "${name}" sent to ${SEGMENTS.find((s) => s.id === segment)?.count} customers`);
+
+    const seg = SEGMENTS.find((s) => s.id === data.segment);
+    const newCampaign: Campaign = {
+      id: `c-${Date.now()}`,
+      name: data.name,
+      status: sendMode === "scheduled" ? "draft" : "active",
+      sentCount: sendMode === "now" ? (seg?.count ?? 0) : 0,
+      openedCount: 0,
+      completedCount: 0,
+      customers: [],
+      createdAt: new Date().toISOString(),
+    };
+    addCampaign(newCampaign);
+
+    const msg = sendMode === "scheduled" && scheduledDate
+      ? `Campaign scheduled for ${format(scheduledDate, "MMM d, yyyy")}`
+      : `Campaign "${data.name}" sent to ${seg?.count} customers`;
+    toast.success(msg);
+
+    reset();
+    setSelectedDraft(null);
+    setScheduledDate(undefined);
+    setSendMode("now");
     setStep("compose");
-    setName(""); setAiContext(""); setSelectedDraft(null); setSegment("all");
   }
 
-  const selectedSegment = SEGMENTS.find((s) => s.id === segment);
+  const selectedSegment = SEGMENTS.find((s) => s.id === watchedSegment);
 
   return (
     <div>
@@ -208,7 +253,7 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
         </div>
 
         <div className="grid lg:grid-cols-[440px_1fr] gap-6 items-start">
-          {/* ── New Campaign panel ─────────────────────────────────────── */}
+          {/* ── New Campaign panel ───────────────────────────────────────── */}
           <Card className="space-y-5">
             {/* Step indicator */}
             <div className="flex items-center gap-2">
@@ -217,7 +262,9 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
                   {i > 0 && <div className={cn("flex-1 h-px w-8", step === "compose" ? "bg-bg-overlay" : "bg-indigo-500/40")} />}
                   <div className={cn(
                     "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all",
-                    step === s ? "bg-brand-primary text-white" : i < ["compose","drafts","schedule"].indexOf(step) ? "bg-emerald-500/20 text-emerald-400" : "bg-bg-overlay text-text-tertiary"
+                    step === s ? "bg-brand-primary text-white"
+                      : i < ["compose","drafts","schedule"].indexOf(step) ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-bg-overlay text-text-tertiary"
                   )}>
                     {i < ["compose","drafts","schedule"].indexOf(step) ? <Check className="h-3 w-3" /> : i + 1}
                   </div>
@@ -230,57 +277,82 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
 
             {/* Step 1: Compose */}
             {step === "compose" && (
-              <div className="space-y-4">
-                <Input label="Campaign name" placeholder="e.g. Post-launch check-in" value={name} onChange={(e) => setName(e.target.value)} />
+              <form onSubmit={handleSubmit(onComposeSubmit)} className="space-y-4">
+                <Controller
+                  name="name"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      label="Campaign name"
+                      placeholder="e.g. Post-launch check-in"
+                      {...field}
+                      error={errors.name?.message}
+                    />
+                  )}
+                />
 
                 {/* Segment */}
                 <div>
                   <p className="text-sm font-medium text-text-secondary mb-2 flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5" /> Segment
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {SEGMENTS.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setSegment(s.id)}
-                        className={cn(
-                          "flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] border text-left transition-all",
-                          segment === s.id
-                            ? "border-brand-primary bg-indigo-500/10"
-                            : "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
-                        )}
-                      >
-                        <span className={cn("text-xs font-medium", segment === s.id ? "text-brand-primary" : "text-text-secondary")}>
-                          {s.label}
-                        </span>
-                        <span className="text-[10px] text-text-tertiary">{s.count}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <Controller
+                    name="segment"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="grid grid-cols-2 gap-2">
+                        {SEGMENTS.map((seg) => (
+                          <button
+                            key={seg.id}
+                            type="button"
+                            onClick={() => field.onChange(seg.id)}
+                            className={cn(
+                              "flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] border text-left transition-all",
+                              field.value === seg.id
+                                ? "border-brand-primary bg-indigo-500/10"
+                                : "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
+                            )}
+                          >
+                            <span className={cn("text-xs font-medium", field.value === seg.id ? "text-brand-primary" : "text-text-secondary")}>
+                              {seg.label}
+                            </span>
+                            <span className="text-[10px] text-text-tertiary">{seg.count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  />
                 </div>
 
                 {/* Channel */}
                 <div>
                   <p className="text-sm font-medium text-text-secondary mb-2">Channel</p>
-                  <div className="flex gap-2">
-                    {(["Email", "Link", "SMS"] as Channel[]).map((ch) => {
-                      const Icon = ch === "Email" ? Mail : ch === "Link" ? Link2 : Send;
-                      return (
-                        <button
-                          key={ch}
-                          onClick={() => setChannel(ch)}
-                          className={cn(
-                            "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-md)] border text-xs font-medium transition-all",
-                            channel === ch
-                              ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
-                              : "border-[var(--border-subtle)] text-text-secondary hover:border-[var(--border-default)]"
-                          )}
-                        >
-                          <Icon className="h-3.5 w-3.5" /> {ch}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Controller
+                    name="channel"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex gap-2">
+                        {(["Email", "Link", "SMS"] as Channel[]).map((ch) => {
+                          const Icon = ch === "Email" ? Mail : ch === "Link" ? Link2 : Send;
+                          return (
+                            <button
+                              key={ch}
+                              type="button"
+                              onClick={() => field.onChange(ch)}
+                              className={cn(
+                                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-md)] border text-xs font-medium transition-all",
+                                field.value === ch
+                                  ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
+                                  : "border-[var(--border-subtle)] text-text-secondary hover:border-[var(--border-default)]"
+                              )}
+                            >
+                              <Icon className="h-3.5 w-3.5" /> {ch}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
                 </div>
 
                 {/* AI context */}
@@ -289,26 +361,31 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
                     <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
                     AI context <span className="text-text-tertiary font-normal">(optional)</span>
                   </label>
-                  <Textarea
-                    placeholder="e.g. Post-launch of our new AI features, asking for feedback on the enrichment workflow"
-                    value={aiContext}
-                    onChange={(e) => setAiContext(e.target.value)}
-                    rows={2}
+                  <Controller
+                    name="aiContext"
+                    control={control}
+                    render={({ field }) => (
+                      <Textarea
+                        placeholder="e.g. Post-launch of our new AI features, asking for feedback on the enrichment workflow"
+                        rows={2}
+                        {...field}
+                      />
+                    )}
                   />
                   <p className="text-[10px] text-text-tertiary mt-1">Helps AI craft more relevant outreach drafts</p>
                 </div>
 
                 <Button
+                  type="submit"
                   variant="gradient"
                   size="md"
                   className="w-full"
                   leftIcon={generating ? undefined : <Sparkles className="h-4 w-4" />}
                   loading={generating}
-                  onClick={generateDrafts}
                 >
                   {generating ? "Generating drafts…" : "Generate drafts with AI"}
                 </Button>
-              </div>
+              </form>
             )}
 
             {/* Step 2: Pick a draft */}
@@ -316,7 +393,8 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-text-primary">Choose a draft</p>
-                  <button className="text-xs text-brand-primary hover:underline flex items-center gap-1" onClick={() => generateDrafts()}>
+                  <button className="text-xs text-brand-primary hover:underline flex items-center gap-1"
+                    onClick={() => handleSubmit(onComposeSubmit)()}>
                     <RefreshCw className="h-3 w-3" /> Regenerate
                   </button>
                 </div>
@@ -344,13 +422,9 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="md" className="flex-1" onClick={() => setStep("compose")}>
-                    Back
-                  </Button>
+                  <Button variant="secondary" size="md" className="flex-1" onClick={() => setStep("compose")}>Back</Button>
                   <Button
-                    variant="primary"
-                    size="md"
-                    className="flex-1"
+                    variant="primary" size="md" className="flex-1"
                     disabled={!selectedDraft}
                     onClick={() => setStep("schedule")}
                     rightIcon={<ChevronDown className="h-4 w-4 -rotate-90" />}
@@ -369,7 +443,7 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
                 <div className="rounded-[var(--radius-md)] bg-bg-elevated border border-[var(--border-subtle)] p-4 space-y-2 text-xs text-text-secondary">
                   <div className="flex justify-between">
                     <span className="text-text-tertiary">Campaign</span>
-                    <span className="text-text-primary font-medium">{name}</span>
+                    <span className="text-text-primary font-medium">{watchedName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-tertiary">Segment</span>
@@ -377,13 +451,86 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-tertiary">Channel</span>
-                    <span className="text-text-primary">{channel}</span>
+                    <span className="text-text-primary">{watchedChannel}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-tertiary">Draft tone</span>
                     <span className="text-text-primary">{AI_DRAFTS.find((d) => d.id === selectedDraft)?.tone}</span>
                   </div>
                 </div>
+
+                {/* Send mode toggle */}
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-2">When to send</p>
+                  <div className="flex gap-2">
+                    {(["now", "scheduled"] as SendMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setSendMode(mode)}
+                        className={cn(
+                          "flex-1 py-2 rounded-[var(--radius-md)] border text-xs font-medium transition-all",
+                          sendMode === mode
+                            ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
+                            : "border-[var(--border-subtle)] text-text-secondary hover:border-[var(--border-default)]"
+                        )}
+                      >
+                        {mode === "now" ? "Send now" : "Schedule"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Date picker */}
+                {sendMode === "scheduled" && (
+                  <div>
+                    <button
+                      onClick={() => setCalendarOpen(!calendarOpen)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] border text-xs transition-all",
+                        scheduledDate
+                          ? "border-brand-primary bg-indigo-500/10 text-brand-primary"
+                          : "border-[var(--border-subtle)] text-text-tertiary hover:border-[var(--border-default)]"
+                      )}
+                    >
+                      <CalendarIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{scheduledDate ? format(scheduledDate, "MMMM d, yyyy") : "Pick a date"}</span>
+                    </button>
+
+                    <AnimatePresence>
+                      {calendarOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="mt-2 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-bg-elevated p-3 overflow-hidden"
+                        >
+                          <DayPicker
+                            mode="single"
+                            selected={scheduledDate}
+                            onSelect={(d) => { setScheduledDate(d); setCalendarOpen(false); }}
+                            disabled={{ before: new Date() }}
+                            classNames={{
+                              root: "text-xs",
+                              month_caption: "text-xs font-semibold text-text-primary mb-2 flex items-center justify-between",
+                              nav: "flex items-center gap-1",
+                              button_previous: "h-6 w-6 flex items-center justify-center rounded hover:bg-bg-overlay text-text-tertiary",
+                              button_next: "h-6 w-6 flex items-center justify-center rounded hover:bg-bg-overlay text-text-tertiary",
+                              weekdays: "grid grid-cols-7 mb-1",
+                              weekday: "text-[10px] text-text-tertiary text-center font-medium py-1",
+                              weeks: "space-y-1",
+                              week: "grid grid-cols-7",
+                              day: "h-7 w-7 flex items-center justify-center rounded-full text-xs text-text-secondary hover:bg-bg-overlay cursor-pointer mx-auto transition-colors",
+                              selected: "bg-brand-primary text-white hover:bg-brand-primary",
+                              today: "font-bold text-brand-primary",
+                              disabled: "opacity-30 cursor-not-allowed",
+                              outside: "opacity-30",
+                            }}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
                 {/* Preview */}
                 <div>
@@ -399,25 +546,21 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="md" className="flex-1" onClick={() => setStep("drafts")}>
-                    Back
-                  </Button>
+                  <Button variant="secondary" size="md" className="flex-1" onClick={() => setStep("drafts")}>Back</Button>
                   <Button
-                    variant="gradient"
-                    size="md"
-                    className="flex-1"
+                    variant="gradient" size="md" className="flex-1"
                     loading={sending}
                     rightIcon={<Send className="h-4 w-4" />}
-                    onClick={handleSend}
+                    onClick={handleSubmit(handleSend)}
                   >
-                    Send now
+                    {sendMode === "scheduled" ? "Schedule" : "Send now"}
                   </Button>
                 </div>
               </div>
             )}
           </Card>
 
-          {/* ── Campaign list ──────────────────────────────────────────── */}
+          {/* ── Campaign list ─────────────────────────────────────────────── */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-text-primary">Campaigns</h2>
@@ -427,7 +570,7 @@ export default function CampaignsPage({ params }: { params: Promise<{ projectId:
             </div>
 
             <motion.div className="space-y-3" variants={staggerContainer} initial="hidden" animate="show">
-              {SEED_CAMPAIGNS.map((c) => (
+              {campaigns.map((c) => (
                 <motion.div key={c.id} variants={fadeUp}>
                   <CampaignRow c={c} />
                 </motion.div>
