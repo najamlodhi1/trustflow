@@ -3,17 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  MessageSquare,
-  Star,
-  Layout,
-  Send,
-  BarChart2,
-  Settings,
-  Zap,
-  ChevronDown,
-  LogOut,
-  CreditCard,
+  LayoutDashboard, MessageSquare, Star, Layout, Send,
+  BarChart2, Settings, Zap, ChevronDown, LogOut, CreditCard, Lightbulb,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -23,10 +14,11 @@ import { Button } from "@/components/ui/Button";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/demo/testimonials", label: "Testimonials", icon: MessageSquare },
+  { href: "/dashboard/demo/testimonials", label: "Inbox", icon: MessageSquare },
   { href: "/dashboard/demo/reviews", label: "Reviews", icon: Star },
   { href: "/dashboard/demo/widgets", label: "Widgets", icon: Layout },
-  { href: "/dashboard/demo/requests", label: "Requests", icon: Send },
+  { href: "/dashboard/demo/requests", label: "Campaigns", icon: Send },
+  { href: "/dashboard/demo/suggestions", label: "Suggestions", icon: Lightbulb, badge: "2" },
   { href: "/dashboard/demo/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/dashboard/demo/settings", label: "Settings", icon: Settings },
 ];
@@ -112,7 +104,12 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                     aria-hidden="true"
                   />
                   {!collapsed && (
-                    <span className="relative z-10">{item.label}</span>
+                    <span className="relative z-10 flex-1">{item.label}</span>
+                  )}
+                  {!collapsed && item.badge && (
+                    <span className="relative z-10 ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">
+                      {item.badge}
+                    </span>
                   )}
                 </Link>
               </li>

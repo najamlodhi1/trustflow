@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth / Multi-tenancy ─────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  passwordHash  String?
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberships   WorkspaceMember[]
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  // Brand voice settings fed into AI prompts
+  brandVoice  Json     @default("{\"tone\":\"professional\",\"person\":\"we\",\"language\":\"en\",\"companyDescription\":\"\"}")
+  // Workspace-level AI settings
+  aiSettings  Json     @default("{\"autoEnrich\":true,\"autoSuggest\":true,\"responseTone\":\"friendly\"}")
+  plan        Plan     @default(FREE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members              WorkspaceMember[]
+  customers            Customer[]
+  testimonialRequests  TestimonialRequest[]
+  testimonials         Testimonial[]
+  reviewImportSources  ReviewImportSource[]
+  widgets              Widget[]
+  aiJobs               AiJob[]
+  promptTemplates      PromptTemplate[]
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        MemberRole @default(MEMBER)
+  createdAt   DateTime  @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+model Customer {
+  id          String   @id @default(cuid())
+  workspaceId String
+  email       String
+  name        String
+  company     String?
+  avatarUrl   String?
+  tags        String[] @default([])
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  testimonialRequests  TestimonialRequest[]
+  testimonials         Testimonial[]
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+}
+
+// ─── Testimonial Requests (Outreach Campaigns) ────────────────────────────────
+
+model TestimonialRequest {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  customerId         String
+  channel            Channel       @default(EMAIL)
+  status             RequestStatus @default(DRAFT)
+  subject            String?
+  body               String?
+  // Token used in the public /collect/[token] URL
+  collectToken       String        @unique @default(cuid())
+  scheduledAt        DateTime?
+  sentAt             DateTime?
+  completedAt        DateTime?
+  promptTemplateId   String?
+  // Context passed to AI when generating drafts (e.g. "post-launch of feature X")
+  aiContext          String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  customer         Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  promptTemplate   PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+  testimonials     Testimonial[]
+
+  @@index([workspaceId, status])
+  @@index([collectToken])
+}
+
+enum Channel {
+  EMAIL
+  LINK
+  SMS
+  WHATSAPP
+}
+
+enum RequestStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  COMPLETED
+  FAILED
+}
+
+// ─── Testimonials ─────────────────────────────────────────────────────────────
+
+model Testimonial {
+  id                  String          @id @default(cuid())
+  workspaceId         String
+  customerId          String?
+  testimonialRequestId String?
+  source              TestimonialSource @default(FORM)
+  // Raw content as submitted / imported
+  rawText             String
+  rating              Int?            // 1–5
+  language            String          @default("en")
+  mediaUrl            String?         // video/audio testimonial URL
+  // AI-enriched fields
+  aiSummary           String?         // short hero quote
+  aiTone              String[]        @default([]) // "enthusiastic", "calm", etc.
+  aiTopics            String[]        @default([]) // "support", "pricing", etc.
+  sentimentScore      Float?          // -1.0 to 1.0
+  sentimentLabel      Sentiment?
+  aiVariants          Json?           // { landingPage: "...", social: "..." }
+  // Approval / visibility
+  isApproved          Boolean         @default(false)
+  isFeatured          Boolean         @default(false)
+  // External review link (for imported reviews)
+  externalId          String?
+  externalUrl         String?
+  reviewSourceId      String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  customer            Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  testimonialRequest  TestimonialRequest?   @relation(fields: [testimonialRequestId], references: [id], onDelete: SetNull)
+  reviewSource        ReviewImportSource?   @relation(fields: [reviewSourceId], references: [id], onDelete: SetNull)
+  aiJobs              AiJob[]
+
+  @@index([workspaceId, isApproved])
+  @@index([workspaceId, source])
+  @@index([workspaceId, sentimentLabel])
+}
+
+enum TestimonialSource {
+  FORM        // first-party collection page
+  IMPORTED    // pulled from Google, Trustpilot, CSV
+  MANUAL      // added by workspace admin
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+// ─── Review Import Sources ────────────────────────────────────────────────────
+
+model ReviewImportSource {
+  id                String       @id @default(cuid())
+  workspaceId       String
+  type              ImportType
+  name              String
+  externalAccountId String?
+  credentials       Json?        // encrypted tokens — never expose to client
+  syncStatus        SyncStatus   @default(IDLE)
+  lastSyncedAt      DateTime?
+  syncError         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  testimonials  Testimonial[]
+
+  @@index([workspaceId])
+}
+
+enum ImportType {
+  GOOGLE
+  TRUSTPILOT
+  CSV
+  CAPTERRA
+  G2
+}
+
+enum SyncStatus {
+  IDLE
+  SYNCING
+  SUCCESS
+  FAILED
+}
+
+// ─── Widgets ─────────────────────────────────────────────────────────────────
+
+model Widget {
+  id          String     @id @default(cuid())
+  workspaceId String
+  name        String
+  type        WidgetType @default(WALL_OF_LOVE)
+  config      Json       @default("{}")
+  published   Boolean    @default(false)
+  embedToken  String     @unique @default(cuid())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([embedToken])
+}
+
+enum WidgetType {
+  WALL_OF_LOVE
+  CAROUSEL
+  BADGE
+  INLINE_QUOTE
+  GRID
+  MASONRY
+}
+
+// ─── AI Jobs ─────────────────────────────────────────────────────────────────
+
+model AiJob {
+  id            String      @id @default(cuid())
+  workspaceId   String
+  testimonialId String?
+  type          AiJobType
+  status        AiJobStatus @default(PENDING)
+  input         Json
+  output        Json?
+  error         String?
+  // ms taken (for monitoring)
+  durationMs    Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  testimonial   Testimonial? @relation(fields: [testimonialId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, type, status])
+  @@index([testimonialId])
+}
+
+enum AiJobType {
+  TESTIMONIAL_ENRICH          // generate summary, sentiment, topics, variants
+  OUTREACH_DRAFT              // draft outreach email(s) for a testimonial request
+  REVIEW_RESPONSE_DRAFT       // draft reply to a review / testimonial
+  SUGGESTED_ASSET             // propose wall-of-love combinations per page
+}
+
+enum AiJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+// ─── Prompt Templates ─────────────────────────────────────────────────────────
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  type        AiJobType
+  // Handlebars-style template: {{ customerName }}, {{ companyDescription }}, etc.
+  template    String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace            Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  testimonialRequests  TestimonialRequest[]
+
+  @@index([workspaceId, type])
+}

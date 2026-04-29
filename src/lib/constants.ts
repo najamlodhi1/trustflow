@@ -66,16 +66,6 @@ export const BUSINESS_TYPES = [
   "Other",
 ] as const;
 
-export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: "LayoutDashboard" },
-  { href: "/dashboard/demo/testimonials", label: "Testimonials", icon: "MessageSquare" },
-  { href: "/dashboard/demo/reviews", label: "Reviews", icon: "Star" },
-  { href: "/dashboard/demo/widgets", label: "Widgets", icon: "Layout" },
-  { href: "/dashboard/demo/requests", label: "Requests", icon: "Send" },
-  { href: "/dashboard/demo/analytics", label: "Analytics", icon: "BarChart2" },
-  { href: "/dashboard/demo/settings", label: "Settings", icon: "Settings" },
-] as const;
-
 export const SEED_TESTIMONIALS = [
   {
     id: "1",
@@ -89,6 +79,16 @@ export const SEED_TESTIMONIALS = [
     source: "direct",
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     featured: true,
+    // AI-enriched fields
+    aiSummary: '"Game-changing results that exceeded every expectation."',
+    aiTone: ["enthusiastic", "appreciative"],
+    aiTopics: ["results", "communication", "quality"],
+    sentimentScore: 0.97,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "Game-changing results, seamless process — TechCorp's story.",
+      social: "Results that exceeded every expectation. That's the TrustFlow difference. 🚀",
+    },
   },
   {
     id: "2",
@@ -102,6 +102,15 @@ export const SEED_TESTIMONIALS = [
     source: "google",
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     featured: true,
+    aiSummary: '"Signup rate up 34% in the first month."',
+    aiTone: ["data-driven", "confident"],
+    aiTopics: ["conversion", "results", "speed"],
+    sentimentScore: 0.94,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "34% more signups in 30 days. TrustFlow is the only tool that converts.",
+      social: "+34% signup rate in month one. Real data, real results.",
+    },
   },
   {
     id: "3",
@@ -115,6 +124,15 @@ export const SEED_TESTIMONIALS = [
     source: "direct",
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     featured: false,
+    aiSummary: '"Beautiful testimonials live on our site in under 10 minutes."',
+    aiTone: ["impressed", "practical"],
+    aiTopics: ["widgets", "design", "ease-of-use"],
+    sentimentScore: 0.91,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "Live in 10 minutes. Stunning by default.",
+      social: "Widget live in under 10 minutes. Clients are obsessed.",
+    },
   },
   {
     id: "4",
@@ -128,6 +146,15 @@ export const SEED_TESTIMONIALS = [
     source: "trustpilot",
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     featured: false,
+    aiSummary: '"Turns rough feedback into compelling testimonials automatically."',
+    aiTone: ["analytical", "impressed"],
+    aiTopics: ["AI features", "quality", "automation"],
+    sentimentScore: 0.78,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "Rough feedback, polished automatically. No editing needed.",
+      social: "AI turned customer notes into testimonials I'd actually use. Genuinely impressive.",
+    },
   },
   {
     id: "5",
@@ -141,6 +168,15 @@ export const SEED_TESTIMONIALS = [
     source: "direct",
     createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     featured: false,
+    aiSummary: '"Paid for itself in the first week."',
+    aiTone: ["practical", "enthusiastic"],
+    aiTopics: ["value", "results", "trust"],
+    sentimentScore: 0.89,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "ROI in week one. For a small business, that's everything.",
+      social: "Sceptical at first. Paid for itself in 7 days.",
+    },
   },
   {
     id: "6",
@@ -154,6 +190,15 @@ export const SEED_TESTIMONIALS = [
     source: "google",
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     featured: false,
+    aiSummary: '"Integration in 5 minutes. The analytics are actually useful."',
+    aiTone: ["technical", "appreciative"],
+    aiTopics: ["onboarding", "widgets", "analytics"],
+    sentimentScore: 0.93,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "5-minute setup. Works perfectly. Analytics that matter.",
+      social: "5 mins to integrate. Widget looks incredible. Analytics actually useful. 10/10.",
+    },
   },
   {
     id: "7",
@@ -167,5 +212,145 @@ export const SEED_TESTIMONIALS = [
     source: "direct",
     createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     featured: false,
+    aiSummary: '"Shortens our sales cycle noticeably."',
+    aiTone: ["strategic", "confident"],
+    aiTopics: ["sales", "conversion", "results"],
+    sentimentScore: 0.88,
+    sentimentLabel: "positive" as const,
+    aiVariants: {
+      landingPage: "Real stories that shorten sales cycles. On every deck.",
+      social: "TrustFlow goes in every proposal. Sales cycles are noticeably shorter.",
+    },
+  },
+  {
+    id: "8",
+    name: "Luca Ferrari",
+    title: "Founder",
+    company: "SaaS Builder",
+    rating: 3,
+    text: "I had some trouble with the initial Google import — took a few back-and-forths with support to sort out. Once it was working though, the sync is flawless.",
+    tags: ["support", "google"],
+    status: "approved",
+    source: "direct",
+    createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    featured: false,
+    aiSummary: '"Once configured, the Google sync is flawless."',
+    aiTone: ["balanced", "fair"],
+    aiTopics: ["onboarding", "support", "Google import"],
+    sentimentScore: 0.15,
+    sentimentLabel: "neutral" as const,
+    aiVariants: {
+      landingPage: "Support resolved my issue quickly. Sync has been flawless since.",
+      social: "Initial hiccup, but support sorted it. The Google sync works perfectly now.",
+    },
   },
 ] as const;
+
+export const SEED_AI_SUGGESTIONS = [
+  {
+    id: "sug-1",
+    type: "landing_section" as const,
+    targetPage: "Homepage",
+    headline: "Trusted by growth teams worldwide",
+    subheadline: "Real results, real customers — no cherry-picking.",
+    quotes: [
+      { testimonialId: "1", variant: "original" as const, preview: '"Game-changing results that exceeded every expectation." — Sarah J., CEO, TechCorp' },
+      { testimonialId: "2", variant: "landingPage" as const, preview: "34% more signups in 30 days. TrustFlow is the only tool that converts. — Mike T., GrowthLabs" },
+      { testimonialId: "5", variant: "original" as const, preview: '"Paid for itself in the first week." — Emma W., Willow & Co.' },
+    ],
+    status: "pending" as const,
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "sug-2",
+    type: "landing_section" as const,
+    targetPage: "Pricing page",
+    headline: "Worth every penny — our customers agree",
+    subheadline: "See why teams choose TrustFlow over the alternatives.",
+    quotes: [
+      { testimonialId: "4", variant: "landingPage" as const, preview: "Rough feedback, polished automatically. No editing needed. — Chris P., Launchpad SaaS" },
+      { testimonialId: "6", variant: "original" as const, preview: '"5-minute setup. The analytics are actually useful." — James O., BuildFast' },
+      { testimonialId: "2", variant: "original" as const, preview: '"Signup rate up 34% in the first month." — Mike T., GrowthLabs' },
+    ],
+    status: "pending" as const,
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "sug-3",
+    type: "hero_quote" as const,
+    targetPage: "All pages",
+    headline: "Featured hero quote",
+    subheadline: "High-sentiment, short, and specific",
+    quotes: [
+      { testimonialId: "2", variant: "original" as const, preview: '"Signup rate up 34% in the first month." — Mike Torres, Founder, GrowthLabs' },
+    ],
+    status: "accepted" as const,
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "sug-4",
+    type: "social_snippet" as const,
+    targetPage: "Social media",
+    headline: "3 social-ready snippets",
+    subheadline: "Tweet-length, optimised for shares",
+    quotes: [
+      { testimonialId: "1", variant: "social" as const, preview: "Results that exceeded every expectation. That's the TrustFlow difference. 🚀" },
+      { testimonialId: "5", variant: "social" as const, preview: "Sceptical at first. Paid for itself in 7 days." },
+      { testimonialId: "6", variant: "social" as const, preview: "5 mins to integrate. Widget looks incredible. Analytics actually useful. 10/10." },
+    ],
+    status: "pending" as const,
+    createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+export const SEED_CAMPAIGNS = [
+  {
+    id: "c1",
+    name: "Post-launch outreach",
+    channel: "Email",
+    segment: "enterprise",
+    status: "sent" as const,
+    sentCount: 12,
+    openedCount: 8,
+    completedCount: 3,
+    sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    customers: [
+      { name: "Sarah Johnson", email: "sarah@techcorp.io", status: "completed" as const, rating: 5 },
+      { name: "James Okafor", email: "james@buildfast.io", status: "opened" as const, rating: null },
+      { name: "David Kim", email: "david@cloudco.io", status: "sent" as const, rating: null },
+    ],
+  },
+  {
+    id: "c2",
+    name: "30-day check-in",
+    channel: "Email",
+    segment: "startup",
+    status: "draft" as const,
+    sentCount: 0,
+    openedCount: 0,
+    completedCount: 0,
+    sentAt: null,
+    customers: [],
+  },
+];
+
+export const SEED_WIDGETS = [
+  {
+    id: "wgt_abc123",
+    name: "Homepage Wall of Love",
+    type: "wall" as const,
+    published: true,
+    views: 4218,
+    testimonialCount: 6,
+    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "wgt_def456",
+    name: "Pricing Page Carousel",
+    type: "carousel" as const,
+    published: false,
+    views: 0,
+    testimonialCount: 3,
+    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+];
