@@ -37,9 +37,11 @@ const SENTIMENT_META = {
   negative: { label: "Negative", color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     dot: "bg-red-400" },
 };
 
-type Testimonial = typeof SEED_TESTIMONIALS[number] & {
+type SentimentLabel = "positive" | "neutral" | "negative";
+type Testimonial = Omit<typeof SEED_TESTIMONIALS[number], "status" | "featured" | "sentimentLabel"> & {
   status: string;
   featured: boolean;
+  sentimentLabel?: SentimentLabel;
 };
 
 // ── AI Response panel ─────────────────────────────────────────────────────────
@@ -311,7 +313,7 @@ export default function TestimonialsPage({ params }: { params: Promise<{ project
   const [filterOpen, setFilterOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [testimonials, setTestimonials] = useState<Testimonial[]>(
-    SEED_TESTIMONIALS.map((t) => ({ ...t, status: t.status, featured: t.featured }))
+    SEED_TESTIMONIALS.map((t) => ({ ...t })) as unknown as Testimonial[]
   );
   const [aiResponseFor, setAiResponseFor] = useState<Testimonial | null>(null);
   const loading = false;

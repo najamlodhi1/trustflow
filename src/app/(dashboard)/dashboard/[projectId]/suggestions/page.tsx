@@ -30,10 +30,19 @@ const TABS: { id: SuggestionType; label: string }[] = [
   { id: "social_snippet", label: "Social snippets" },
 ];
 
-type Suggestion = typeof SEED_AI_SUGGESTIONS[number];
+interface Suggestion {
+  id: string;
+  type: "landing_section" | "hero_quote" | "social_snippet";
+  targetPage: string;
+  headline: string;
+  subheadline: string;
+  quotes: Array<{ testimonialId: string; variant: string; preview: string }>;
+  status: SuggestionStatus;
+  createdAt: string;
+}
 
 function SuggestionCard({ s, onAccept, onReject }: {
-  s: Suggestion & { status: SuggestionStatus };
+  s: Suggestion;
   onAccept: () => void;
   onReject: () => void;
 }) {
@@ -205,9 +214,9 @@ export default function SuggestionsPage({ params }: { params: Promise<{ projectI
     else toast.success("Suggestion rejected — we'll learn from this");
   }
 
-  const suggestions = SEED_AI_SUGGESTIONS
+  const suggestions = (SEED_AI_SUGGESTIONS as unknown as Suggestion[])
     .filter((s) => tab === "all" || s.type === tab)
-    .map((s) => ({ ...s, status: statuses[s.id] ?? s.status as SuggestionStatus }));
+    .map((s) => ({ ...s, status: statuses[s.id] ?? s.status }));
 
   const pendingCount = Object.values(statuses).filter((s) => s === "pending").length;
   const acceptedCount = Object.values(statuses).filter((s) => s === "accepted").length;
